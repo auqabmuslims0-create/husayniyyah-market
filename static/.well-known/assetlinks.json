@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.husayniyyah.market",
+        "sha256_cert_fingerprints": ["F5:69:70:A6:B9:27:43:EA:E8:97:08:6F:DD:95:A8:42:DD:DF:A0:C3:FF:60:C5:9A:A4:53:3F:10:DC:77:F8:A1"]
+      }
+    }]
