@@ -188,6 +188,9 @@ def before_request_checks():
     if request.path.startswith('/api/') or request.endpoint is None:
         return
 
+    if request.path == '/.well-known/assetlinks.json':
+        return
+
     public_endpoints = [
         'auth.login', 'auth.register', 'auth.forgot_password', 'auth.confirm_identity',
         'auth.reset_password', 'auth.show_public_id', 'static',
