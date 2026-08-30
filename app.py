@@ -288,6 +288,10 @@ def internal_error(e):
     app.logger.exception('حدث خطأ 500')
     return render_template('shared/error.html', code=500, message='حدث خطأ داخلي في الخادم، يرجى المحاولة لاحقاً'), 500
 
+@app.route('/.well-known/assetlinks.json')
+def assetlinks():
+    return app.send_static_file('.well-known/assetlinks.json')
+
 if __name__ == '__main__':
     # إنشاء الجداول تلقائيًا في بيئة التطوير قبل أي استعلام
     with app.app_context():
