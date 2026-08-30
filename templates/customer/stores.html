@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}المتاجر{% endblock %}
+
+{% block head %}
+<style>
+    /* ترويسة المتاجر */
+    .stores-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, #f8f9fa, #fff);
+        border-radius: 20px;
+        padding: 16px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    body.dark-mode .stores-hero {
+        background: linear-gradient(135deg, #252525, #1e1e1e);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .stores-hero-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        color: #fff;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        flex-shrink: 0;
+    }
+    .stores-count {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+    }
+    /* شريط الفلترة */
+    .filter-bar {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    body.dark-mode .filter-bar {
+        background: #252525;
+    }
+    /* شبكة المتاجر */
+    .stores-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 15px;
+    }
+    @media (max-width: 480px) {
+        .stores-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+    }
+    /* ضمان ظهور الشعارات بشكل جيد */
+    .store-card-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    /* شارة الحالة */
+    .store-status-badge {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    /* بطاقة المتجر */
+    .store-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: #fff;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .store-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    body.dark-mode .store-card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .store-card-image {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: #f0f0f0;
+        border-radius: 20px 20px 0 0;
+    }
+    .store-card-body {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        text-align: center;
+    }
+    .store-card-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .store-visit-btn {
+        margin-top: auto;
+        display: inline-block;
+        width: 100%;
+        padding: 6px;
+        border-radius: 20px;
+        border: 1px solid var(--primary);
+        color: var(--primary);
+        background: transparent;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+        text-decoration: none;
+        text-align: center;
+    }
+    .store-visit-btn:hover {
+        background: var(--primary);
+        color: #fff;
+    }
+    body.dark-mode .store-visit-btn {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+    body.dark-mode .store-visit-btn:hover {
+        background: var(--accent);
+        color: #000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- ترويسة الصفحة -->
+    <div class="stores-hero">
+        <div class="d-flex align-items-center gap-3">
+            <div class="stores-hero-icon">
+                <i class="bi bi-shop-window"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold mb-1">المتاجر</h4>
+                <p class="text-muted mb-0 small">اكتشف متاجرنا النشطة</p>
+            </div>
+        </div>
+        <span class="badge bg-primary stores-count">{{ pagination.total }} متجر</span>
+    </div>
+
+    <!-- شريط الفلترة -->
+    <div class="filter-bar">
+        <form method="GET" action="{{ url_for('stores.stores_page') }}" class="row g-2 align-items-end">
+            <div class="col-12 col-md-6">
+                <label class="form-label small fw-bold">بحث</label>
+                <div class="input-group search-input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ q or '' }}" class="form-control" placeholder="ابحث عن متجر بالاسم أو المالك...">
+                </div>
+            </div>
+            <div class="col-6 col-md-4">
+                <label class="form-label small fw-bold">الحالة</label>
+                <select name="status" class="form-select">
+                    <option value="">الكل</option>
+                    <option value="open" {% if status_filter == 'open' %}selected{% endif %}>مفتوح الآن</option>
+                    <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>مغلق</option>
+                </select>
+            </div>
+            <div class="col-6 col-md-2 d-grid">
+                <button type="submit" class="btn btn-custom"><i class="bi bi-funnel"></i> تصفية</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- شبكة المتاجر -->
+    {% if stores %}
+    <div class="stores-grid">
+        {% for store in stores %}
+            {{ macros.render_store_card(store, open_status.get(store.id)) }}
+        {% endfor %}
+    </div>
+    {% else %}
+        {{ macros.render_empty_state('bi-shop-window', 'لا توجد متاجر مطابقة', url_for('stores.stores_page'), 'عرض الكل') }}
+    {% endif %}
+
+    <!-- ترقيم الصفحات -->
+    {% if pagination.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('stores.stores_page', page=pagination.prev_num, q=q, status=status_filter) }}">السابق</a>
+            </li>
+            {% for p in pagination.iter_pages() %}
+                {% if p != '...' %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('stores.stores_page', page=p, q=q, status=status_filter) }}">{{ p }}</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('stores.stores_page', page=pagination.next_num, q=q, status=status_filter) }}">التالي</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

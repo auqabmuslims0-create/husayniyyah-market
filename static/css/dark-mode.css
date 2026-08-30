@@ -1,0 +1,157 @@
+/* تحسينات الوضع الداكن: نص أبيض وعناصر متناسقة */
+body.dark-mode {
+    color: #ffffff !important;
+}
+body.dark-mode .text-muted,
+body.dark-mode .small,
+body.dark-mode .card-title,
+body.dark-mode .card-text,
+body.dark-mode .form-label,
+body.dark-mode .nav-link,
+body.dark-mode .dropdown-item,
+body.dark-mode .list-group-item,
+body.dark-mode .table,
+body.dark-mode .alert,
+body.dark-mode .badge {
+    color: #f0ede8 !important;
+}
+body.dark-mode .text-dark {
+    color: #f0ede8 !important;
+}
+body.dark-mode .bg-light {
+    background-color: #2d2d2d !important;
+}
+body.dark-mode .border {
+    border-color: #444 !important;
+}
+body.dark-mode .navbar-custom {
+    background: linear-gradient(135deg, #1e2a1f, #1a1a1a) !important;
+}
+body.dark-mode .modern-sidebar {
+    background: rgba(40, 40, 40, 0.95) !important;
+}
+body.dark-mode .sidebar-menu-item {
+    color: #f0ede8 !important;
+}
+body.dark-mode .sidebar-menu-item:hover {
+    background: rgba(201, 162, 39, 0.15) !important;
+    color: #ffffff !important;
+}
+body.dark-mode .bottom-nav {
+    background: rgba(30, 30, 30, 0.92) !important;
+}
+body.dark-mode .bottom-nav-item {
+    color: #adb5bd !important;
+}
+body.dark-mode .bottom-nav-item.active {
+    color: #ffffff !important;
+}
+body.dark-mode .cart-circle {
+    background: linear-gradient(135deg, #c9a227, #a8871d) !important;
+    box-shadow: 0 12px 22px rgba(0,0,0,0.5) !important;
+}
+body.dark-mode .cart-badge {
+    background-color: #ff4d4d !important;
+}
+body.dark-mode .btn-custom {
+    background-color: #c9a227 !important;
+    color: #000 !important;
+}
+body.dark-mode .btn-custom:hover {
+    background-color: #b8941f !important;
+    color: #000 !important;
+}
+body.dark-mode .card {
+    background-color: #1e1e1e !important;
+    color: #ffffff !important;
+    border-color: #333 !important;
+}
+body.dark-mode .card-header {
+    background: rgba(255,255,255,0.03) !important;
+    border-bottom: 1px solid #333 !important;
+}
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+    background-color: #2d2d2d !important;
+    border-color: #444 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    background-color: #2d2d2d !important;
+    border-color: #c9a227 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .input-group-text {
+    background-color: #2d2d2d !important;
+    border-color: #444 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .table {
+    background-color: #1e1e1e !important;
+    color: #ffffff !important;
+}
+body.dark-mode .table thead {
+    background-color: #333 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+    background-color: #2d2d2d !important;
+}
+body.dark-mode .toast-modern {
+    background: rgba(30, 30, 30, 0.95) !important;
+    color: #ffffff !important;
+}
+body.dark-mode .search-bar-modern {
+    background: rgba(30, 30, 30, 0.7) !important;
+    border-color: #444 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .search-input-modern {
+    color: #ffffff !important;
+}
+body.dark-mode .search-icon {
+    color: #c9a227 !important;
+}
+body.dark-mode .filter-btn {
+    background: rgba(30, 30, 30, 0.7) !important;
+    color: #c9a227 !important;
+}
+body.dark-mode .dropdown-menu {
+    background-color: #2d2d2d !important;
+    border-color: #444 !important;
+}
+body.dark-mode .dropdown-item {
+    color: #ffffff !important;
+}
+body.dark-mode .dropdown-item:hover {
+    background-color: #3a3a3a !important;
+    color: #ffffff !important;
+}
+body.dark-mode .modal-content {
+    background-color: #1e1e1e !important;
+    color: #ffffff !important;
+}
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+    border-color: #444 !important;
+}
+body.dark-mode .list-group-item {
+    background-color: #2d2d2d !important;
+    color: #ffffff !important;
+}
+body.dark-mode .pagination .page-link {
+    background-color: #2d2d2d !important;
+    border-color: #444 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .pagination .page-item.active .page-link {
+    background-color: #c9a227 !important;
+    border-color: #c9a227 !important;
+    color: #000 !important;
+}
+body.dark-mode .pagination .page-item.disabled .page-link {
+    background-color: #1e1e1e !important;
+    border-color: #333 !important;
+    color: #777 !important;
+}

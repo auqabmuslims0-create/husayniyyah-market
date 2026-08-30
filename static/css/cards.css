@@ -1,0 +1,359 @@
+/* ============================================
+   cards.css - نظام البطاقات ومعارض الصور
+   ============================================ */
+
+/* ---------- شبكات العرض ---------- */
+.products-grid,
+.stores-grid,
+.offers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 15px;
+}
+
+@media (max-width: 480px) {
+    .products-grid,
+    .stores-grid,
+    .offers-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+}
+
+/* ---------- بطاقة المنتج ---------- */
+.product-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #fff;
+    border-radius: 20px; /* استدارة أكبر للبطاقة */
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+body.dark-mode .product-card {
+    background: #1e1e1e;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.product-card-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #f0f0f0;
+    border-radius: 20px 20px 0 0; /* استدارة أعلى الصورة مع البطاقة */
+}
+body.dark-mode .product-card-image {
+    background: #2d2d2d;
+}
+
+.product-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 20px 20px 0 0; /* استدارة الصورة نفسها */
+}
+
+.product-card-body {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 120px;
+}
+
+.product-card-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.product-card-store {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+body.dark-mode .product-card-store {
+    color: #adb5bd;
+}
+.product-card-store img {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.product-card-price {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.price-current {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--primary);
+}
+.price-old {
+    font-size: 0.8rem;
+    color: #888;
+    text-decoration: line-through;
+}
+.price-discount {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    background: #dc3545;
+    color: #fff;
+    font-weight: 600;
+}
+
+.add-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    z-index: 2;
+}
+.add-btn:hover {
+    background: var(--primary-dark);
+}
+
+.out-of-stock {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    z-index: 1;
+}
+
+.offer-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+}
+
+/* ---------- بطاقة المتجر ---------- */
+.store-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+body.dark-mode .store-card {
+    background: #1e1e1e;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.store-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.store-card-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #f0f0f0;
+    border-radius: 20px 20px 0 0;
+}
+body.dark-mode .store-card-image {
+    background: #2d2d2d;
+}
+.store-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 20px 20px 0 0;
+}
+
+.store-card-body {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    text-align: center;
+}
+
+.store-card-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.store-status-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.store-visit-btn {
+    margin-top: auto;
+    width: 100%;
+    padding: 6px;
+    border-radius: 20px;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    background: transparent;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.store-visit-btn:hover {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* ---------- شريط المتاجر المفتوحة (السوق) ---------- */
+.store-strip .store-logo-circle {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+    margin: 0 auto;
+}
+.store-strip .store-logo-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+.store-strip .store-logo-circle .image-fallback {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #adb5bd;
+    background: #e9ecef;
+}
+body.dark-mode .store-strip .store-logo-circle {
+    background: #2d2d2d;
+}
+
+/* ---------- معرض صور المنتج ---------- */
+.product-gallery-new {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.main-image-container {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 20px; /* استدارة أكبر */
+    overflow: hidden;
+    background: #f8f9fa;
+    border: 1px solid #eee;
+}
+.main-product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 20px; /* الصورة نفسها مستديرة */
+    -webkit-border-radius: 20px;
+}
+.main-image-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    color: #adb5bd;
+}
+.thumbnails-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 5px;
+}
+.thumbnail-item {
+    flex-shrink: 0;
+    width: 70px;
+    height: 70px;
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, transform 0.2s;
+    background: #f0f0f0;
+}
+.thumbnail-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px; /* استدارة المصغرات */
+}
+.thumbnail-item.active {
+    border-color: var(--primary);
+    transform: scale(1.05);
+}
+body.dark-mode .main-image-container {
+    background: #2d2d2d;
+    border-color: #444;
+}
+body.dark-mode .thumbnail-item {
+    background: #333;
+}
+
+/* ---------- بديل الصورة ---------- */
+.image-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: #adb5bd;
+}

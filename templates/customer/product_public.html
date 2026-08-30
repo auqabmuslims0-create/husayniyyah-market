@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .product-gallery-new {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .main-image-container {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 20px;
+        overflow: hidden;
+        background: #f8f9fa;
+        border: 1px solid #eee;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .main-product-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .main-image-fallback {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        color: #adb5bd;
+    }
+    /* الصور المصغرة: تلتف تلقائياً وتخفي شريط التمرير */
+    .thumbnails-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 5px;
+        overflow-x: hidden; /* إخفاء الشريط الأفقي نهائياً */
+    }
+    .thumbnail-item {
+        width: 70px;
+        height: 70px;
+        border-radius: 14px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: border-color 0.2s, transform 0.2s;
+        background: #f0f0f0;
+        flex-shrink: 0;
+    }
+    .thumbnail-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 14px;
+    }
+    .thumbnail-item.active {
+        border-color: var(--primary);
+        transform: scale(1.05);
+    }
+    body.dark-mode .main-image-container {
+        background: #2d2d2d;
+        border-color: #444;
+    }
+    body.dark-mode .thumbnail-item {
+        background: #333;
+    }
+    body.dark-mode .main-image-fallback {
+        color: #ccc;
+    }
+    .product-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .product-description {
+        line-height: 1.7;
+        color: var(--muted-light);
+    }
+    body.dark-mode .product-description {
+        color: var(--muted-dark);
+    }
+    .product-options {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 10px;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    body.dark-mode .product-options {
+        background-color: #2d2d2d;
+        color: #f0ede8;
+    }
+    .stars {
+        --percent: calc(var(--rating) / 5 * 100%);
+        display: inline-block;
+        font-size: 1.5rem;
+        font-family: Times;
+        line-height: 1;
+    }
+    .stars::before {
+        content: "★★★★★";
+        letter-spacing: 3px;
+        background: linear-gradient(90deg, #ffc107 var(--percent), #e0e0e0 var(--percent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .star-rating {
+        direction: ltr;
+        display: inline-flex;
+        gap: 5px;
+        font-size: 1.8rem;
+        cursor: pointer;
+    }
+    .star-rating .star {
+        color: #e0e0e0;
+        transition: color var(--transition-fast);
+    }
+    .star-rating .star.active,
+    .star-rating .star.hover {
+        color: #ffc107;
+    }
+    .comment-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .comment-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+    .comment-bubble {
+        background: #f1f3f5;
+        border-radius: 15px;
+        padding: 8px 12px;
+        flex: 1;
+    }
+    body.dark-mode .comment-bubble {
+        background: #2d2d2d;
+        color: #f0ede8;
+    }
+    .comment-text {
+        font-size: 0.9rem;
+        margin-bottom: 2px;
+    }
+    .comment-meta {
+        font-size: 0.7rem;
+        color: #6c757d;
+    }
+    .favorite-btn {
+        border-radius: var(--radius-sm);
+        min-width: 48px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row g-4">
+        <!-- معرض الصور -->
+        <div class="col-md-6">
+            <div class="product-gallery-new">
+                <div class="main-image-container">
+                    {% if product.main_image %}
+                        <img src="{{ product.main_image | get_image_url }}" alt="{{ product.name }}" class="main-product-image" id="mainProductImage">
+                    {% else %}
+                        <div class="main-image-fallback">
+                            <i class="bi bi-image"></i>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if product.sub_images %}
+                    {% set sub_images = product.sub_images.split(',') %}
+                    <div class="thumbnails-row" id="thumbnailsRow">
+                        <div class="thumbnail-item active" data-full="{{ product.main_image | get_image_url }}">
+                            <img src="{{ product.main_image | get_image_url }}" alt="الصورة الأساسية">
+                        </div>
+                        {% for img in sub_images %}
+                            {% set img = img.strip() %}
+                            {% if img %}
+                            <div class="thumbnail-item" data-full="{{ img | get_image_url }}">
+                                <img src="{{ img | get_image_url }}" alt="صورة فرعية">
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- معلومات المنتج -->
+        <div class="col-md-6">
+            <h1 class="product-title">{{ product.name }}</h1>
+            <div class="mb-2">
+                {{ macros.render_price(product.price, product.original_price, product.is_offer) }}
+            </div>
+            <div class="mb-3">
+                <span class="badge bg-secondary">{{ product.category.name if product.category else 'غير مصنف' }}</span>
+                <span class="badge bg-info text-dark"><i class="bi bi-eye"></i> {{ product.views }} مشاهدة</span>
+                {% if product.stock_quantity > 0 %}
+                    <span class="badge bg-success">متوفر ({{ product.stock_quantity }})</span>
+                {% else %}
+                    <span class="badge bg-danger">نفد المخزون</span>
+                {% endif %}
+            </div>
+            <p class="product-description">{{ product.description or 'لا يوجد وصف' }}</p>
+            {% if product.options %}
+                <div class="product-options mb-3">{{ product.options }}</div>
+            {% endif %}
+            <div class="d-flex gap-2">
+                <button class="btn btn-custom" onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة', 'success'))" {% if product.stock_quantity == 0 %}disabled{% endif %}>
+                    <i class="bi bi-cart-plus"></i> أضف للسلة
+                </button>
+                <button class="btn btn-outline-danger favorite-btn" onclick="toggleFavoriteProduct({{ product.id }}, this)">
+                    <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                </button>
+            </div>
+
+            <!-- معلومات المتجر -->
+            <div class="d-flex align-items-center gap-2 mt-3">
+                {% if product.store %}
+                <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="text-decoration-none d-flex align-items-center gap-2">
+                    {% if product.store.logo_url %}
+                        <img src="{{ product.store.logo_url | get_image_url }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover;" alt="{{ product.store.name }}">
+                    {% else %}
+                        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width:40px;height:40px;">
+                            <i class="bi bi-shop"></i>
+                        </div>
+                    {% endif %}
+                    <span class="fw-bold">{{ product.store.name }}</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- التقييمات والتعليقات -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h5 class="fw-bold">التقييمات ({{ reviews_count }})</h5>
+            <div class="d-flex align-items-center mb-2">
+                <span class="fs-4">{{ avg_rating }}</span>
+                <div class="stars ms-2" style="--rating: {{ avg_rating }};"></div>
+            </div>
+
+            {% if current_user %}
+            <form method="POST" action="{{ url_for('account.add_review', product_id=product.id) }}" class="mb-4">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <div class="star-rating mb-2" id="starRating">
+                    {% for i in range(1,6) %}
+                    <span class="star" data-value="{{ i }}"><i class="bi bi-star"></i></span>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="rating" id="ratingValue" required>
+                <textarea name="comment" class="form-control mb-2" rows="3" placeholder="اكتب تعليقك..." required></textarea>
+                <button type="submit" class="btn btn-custom">إرسال التقييم</button>
+            </form>
+            {% endif %}
+
+            <!-- قائمة التقييمات -->
+            <div id="reviewsSection">
+                {% for review in product.reviews %}
+                <div class="comment-item">
+                    <div class="comment-avatar">
+                        {% if review.user and review.user.avatar %}
+                            <img src="{{ review.user.avatar | get_image_url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" alt="{{ review.user.username }}">
+                        {% else %}
+                            {{ review.user.username[:1] if review.user else 'م' }}
+                        {% endif %}
+                    </div>
+                    <div class="comment-bubble">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ review.user.username if review.user else 'مستخدم' }}</strong>
+                            <div class="stars" style="--rating: {{ review.rating }}; font-size:1rem;"></div>
+                        </div>
+                        <p class="comment-text mb-1">{{ review.comment }}</p>
+                        <span class="comment-meta">{{ review.created_at.strftime('%Y-%m-%d %H:%M') if review.created_at }}</span>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted">لا توجد تقييمات بعد.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // معرض الصور
+    const mainImg = document.getElementById('mainProductImage');
+    const thumbnails = document.querySelectorAll('.thumbnail-item');
+
+    thumbnails.forEach(item => {
+        item.addEventListener('click', function() {
+            const fullSrc = this.dataset.full;
+            if (mainImg) {
+                mainImg.src = fullSrc;
+            }
+            thumbnails.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // تقييم النجوم (إصلاح النقر على الأيقونة)
+    const stars = document.querySelectorAll('#starRating .star');
+    const ratingInput = document.getElementById('ratingValue');
+
+    function updateStars(starElements, value) {
+        starElements.forEach(s => {
+            const v = parseInt(s.dataset.value);
+            const icon = s.querySelector('i');
+            if (v <= value) {
+                if (icon) icon.className = 'bi bi-star-fill text-warning';
+                s.classList.add('active');
+            } else {
+                if (icon) icon.className = 'bi bi-star';
+                s.classList.remove('active');
+            }
+        });
+    }
+
+    function setRating(value) {
+        if (!isNaN(value) && value >= 1 && value <= 5) {
+            ratingInput.value = value;
+            updateStars(stars, value);
+        }
+    }
+
+    stars.forEach(star => {
+        star.addEventListener('click', function(e) {
+            const value = parseInt(this.dataset.value);
+            setRating(value);
+        });
+        star.addEventListener('mouseenter', function() {
+            const value = parseInt(this.dataset.value);
+            updateStars(stars, value);
+        });
+        star.addEventListener('mouseleave', function() {
+            const current = parseInt(ratingInput.value) || 0;
+            updateStars(stars, current);
+        });
+    });
+});
+</script>
+{% endblock %}
