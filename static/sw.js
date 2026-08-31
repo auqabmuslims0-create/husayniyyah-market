@@ -1,4 +1,4 @@
-const CACHE_NAME = 'husayniyyah-cache-v7';
+const CACHE_NAME = 'husayniyyah-cache-v8';
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -30,7 +30,11 @@ const PUBLIC_PATHS = [
   '/offers',
   '/search',
   '/product/',
-  '/store/'
+  '/store/',
+  '/reels',
+  '/services',
+  '/about',
+  '/contact'
 ];
 
 // مسارات لوحات التحكم التي نسمح بتخزينها (صفحات القراءة فقط)
@@ -59,6 +63,10 @@ const PAGES_TO_CACHE = [
   '/market',
   '/stores',
   '/offers',
+  '/reels',
+  '/services',
+  '/about',
+  '/contact',
   '/offline.html'
 ];
 
