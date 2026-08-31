@@ -1,4 +1,4 @@
-const CACHE_NAME = 'husayniyyah-cache-v5';
+const CACHE_NAME = 'husayniyyah-cache-v6';
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -22,13 +22,24 @@ const STATIC_ASSETS = [
   '/static/offline.html'
 ];
 
+// الصفحات العامة التي نسمح بتخزينها للعمل دون اتصال
+const PUBLIC_PATHS = [
+  '/',
+  '/market',
+  '/stores',
+  '/offers',
+  '/search',
+  '/product/',
+  '/store/'
+];
+
 // الصفحات الأساسية التي نريد تخزينها عند التثبيت
 const PAGES_TO_CACHE = [
-  '/onboarding',
-  '/login',
-  '/cart',
-  '/favorites',
-  '/market'
+  '/',
+  '/market',
+  '/stores',
+  '/offers',
+  '/offline.html'
 ];
 
 self.addEventListener('install', event => {
@@ -37,7 +48,7 @@ self.addEventListener('install', event => {
       .then(cache => {
         // تخزين الأصول الثابتة
         cache.addAll(STATIC_ASSETS);
-        // محاولة تخزين الصفحات الأساسية (بعضها قد يفشل بسبب تسجيل الدخول)
+        // محاولة تخزين الصفحات العامة الأساسية
         return Promise.allSettled(
           PAGES_TO_CACHE.map(page =>
             fetch(page, {cache: 'no-store'})
@@ -71,10 +82,18 @@ self.addEventListener('fetch', event => {
 
   // للصفحات (navigate) نستخدم Network First مع cache fallback
   if (request.mode === 'navigate') {
+    // التحقق مما إذا كانت الصفحة عامة (يمكن تخزينها)
+    const url = new URL(request.url);
+    const isPublicPath = PUBLIC_PATHS.some(path => {
+      if (path === '/') return url.pathname === '/';
+      if (path.endsWith('/')) return url.pathname.startsWith(path);
+      return url.pathname === path || url.pathname.startsWith(path);
+    });
+
     event.respondWith(
       fetch(request)
         .then(response => {
-          if (response.ok) {
+          if (response.ok && isPublicPath) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
@@ -83,6 +102,7 @@ self.addEventListener('fetch', event => {
         .catch(() => {
           return caches.match(request).then(cached => {
             if (cached) return cached;
+            // إذا لم توجد نسخة مخزنة، نعرض صفحة offline
             return caches.match('/static/offline.html');
           });
         })
