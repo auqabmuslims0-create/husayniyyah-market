@@ -340,48 +340,79 @@ def checkout(store_id):
 def place_order(store_id):
     user = db.session.get(models.User, session['user_id'])
     if not user or not user.is_active:
+        if request.is_json:
+            return jsonify({'message': 'الحساب محظور'}), 403
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
 
     store = models.Store.query.get_or_404(store_id)
 
     if not is_store_active(store):
+        if request.is_json:
+            return jsonify({'message': 'هذا المتجر غير نشط حالياً ولا يمكن الطلب منه'}), 400
         flash('هذا المتجر غير نشط حالياً ولا يمكن الطلب منه')
         return redirect(url_for('cart.cart'))
 
-    cart = _get_session_cart()
-    if not cart:
-        return redirect(url_for('cart.cart'))
+    # دعم JSON للمزامنة من التطبيق
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        delivery_address = data.get('delivery_address', '').strip()
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        items_data = data.get('items', [])
+        if not items_data:
+            return jsonify({'message': 'يجب توفير عناصر الطلب'}), 400
+        # تحويل items_data إلى cart_items
+        cart_items = []
+        for item in items_data:
+            product_id = item.get('product_id')
+            quantity = item.get('quantity', 1)
+            product = db.session.get(models.Product, product_id)
+            if product and product.store_id == store.id:
+                cart_items.append({'product': product, 'quantity': quantity})
+        if not cart_items:
+            return jsonify({'message': 'لا توجد منتجات صالحة'}), 400
+    else:
+        # الطريقة التقليدية من النموذج
+        cart = _get_session_cart()
+        if not cart:
+            return redirect(url_for('cart.cart'))
 
-    product_ids = [int(pid) for pid in cart.keys()]
-    products = models.Product.query.filter(
-        models.Product.id.in_(product_ids),
-        models.Product.store_id == store.id
-    ).all()
-    product_map = {p.id: p for p in products}
+        product_ids = [int(pid) for pid in cart.keys()]
+        products = models.Product.query.filter(
+            models.Product.id.in_(product_ids),
+            models.Product.store_id == store.id
+        ).all()
+        product_map = {p.id: p for p in products}
 
-    cart_items = []
-    for pid_str, qty in cart.items():
-        product = product_map.get(int(pid_str))
-        if product:
-            cart_items.append({'product': product, 'quantity': qty})
+        cart_items = []
+        for pid_str, qty in cart.items():
+            product = product_map.get(int(pid_str))
+            if product:
+                cart_items.append({'product': product, 'quantity': qty})
 
-    if not cart_items:
-        flash('لا توجد منتجات لهذا المتجر في السلة')
-        return redirect(url_for('cart.cart'))
+        if not cart_items:
+            if request.is_json:
+                return jsonify({'message': 'لا توجد منتجات لهذا المتجر في السلة'}), 400
+            flash('لا توجد منتجات لهذا المتجر في السلة')
+            return redirect(url_for('cart.cart'))
 
-    delivery_address = None
-    latitude = longitude = None
-    if store.has_delivery:
-        delivery_address = request.form.get('delivery_address', '').strip()
-        if not delivery_address:
-            flash('العنوان مطلوب لخدمة التوصيل')
-            return redirect(url_for('cart.checkout', store_id=store.id))
-        latitude = request.form.get('latitude', type=float)
-        longitude = request.form.get('longitude', type=float)
-        if not latitude or not longitude:
-            flash('يرجى تحديد موقع التوصيل على الخريطة')
-            return redirect(url_for('cart.checkout', store_id=store.id))
+        delivery_address = None
+        latitude = longitude = None
+        if store.has_delivery:
+            delivery_address = request.form.get('delivery_address', '').strip()
+            if not delivery_address:
+                if request.is_json:
+                    return jsonify({'message': 'العنوان مطلوب لخدمة التوصيل'}), 400
+                flash('العنوان مطلوب لخدمة التوصيل')
+                return redirect(url_for('cart.checkout', store_id=store.id))
+            latitude = request.form.get('latitude', type=float)
+            longitude = request.form.get('longitude', type=float)
+            if not latitude or not longitude:
+                if request.is_json:
+                    return jsonify({'message': 'يرجى تحديد موقع التوصيل على الخريطة'}), 400
+                flash('يرجى تحديد موقع التوصيل على الخريطة')
+                return redirect(url_for('cart.checkout', store_id=store.id))
 
     payment_method = 'cash'
 
@@ -391,23 +422,33 @@ def place_order(store_id):
             delivery_address=delivery_address, latitude=latitude, longitude=longitude,
             payment_method=payment_method
         )
-        for item in cart_items:
-            cart.pop(str(item['product'].id), None)
+        if not request.is_json:
+            # تنظيف السلة للمسار التقليدي فقط
+            cart = _get_session_cart()
+            for item in cart_items:
+                cart.pop(str(item['product'].id), None)
+                if 'user_id' in session:
+                    models.CartItem.query.filter_by(
+                        user_id=session['user_id'], product_id=item['product'].id
+                    ).delete()
             if 'user_id' in session:
-                models.CartItem.query.filter_by(
-                    user_id=session['user_id'], product_id=item['product'].id
-                ).delete()
-        if 'user_id' in session:
-            db.session.commit()
-        _save_session_cart(cart)
-        flash('تم تقديم الطلب بنجاح')
-        return redirect(url_for('cart.cart'))
+                db.session.commit()
+            _save_session_cart(cart)
+            flash('تم تقديم الطلب بنجاح')
+            return redirect(url_for('cart.cart'))
+        else:
+            # للـ JSON نعيد رسالة نجاح فقط
+            return jsonify({'message': 'تم تقديم الطلب بنجاح'}), 201
     except ValueError as e:
         db.session.rollback()
+        if request.is_json:
+            return jsonify({'message': str(e)}), 400
         flash(str(e), 'error')
         return redirect(url_for('cart.cart'))
     except Exception:
         db.session.rollback()
+        if request.is_json:
+            return jsonify({'message': 'حدث خطأ أثناء إنشاء الطلب، حاول مرة أخرى'}), 500
         flash('حدث خطأ أثناء إنشاء الطلب، حاول مرة أخرى', 'error')
         return redirect(url_for('cart.cart'))
 

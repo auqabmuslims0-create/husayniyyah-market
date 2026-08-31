@@ -224,3 +224,32 @@
     {% endif %}
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // حفظ المتاجر في IndexedDB
+    if (navigator.onLine && typeof OfflineDB !== 'undefined') {
+        const storesData = [
+            {% for store in stores %}
+            {
+                id: {{ store.id }},
+                name: {{ store.name | tojson }},
+                description: {{ store.description | tojson if store.description else '""' }},
+                logo_url: {{ store.logo_url | tojson if store.logo_url else '""' }},
+                phone: {{ store.phone | tojson if store.phone else '""' }},
+                address: {{ store.address | tojson if store.address else '""' }},
+                working_hours: {{ store.working_hours | tojson if store.working_hours else '""' }},
+                subscription_status: {{ store.subscription_status | tojson if store.subscription_status else '""' }},
+                is_open: {{ open_status.get(store.id, false) | lower }}
+            }{{ ',' if not loop.last }}
+            {% endfor %}
+        ];
+
+        if (storesData.length) {
+            OfflineDB.saveStores(storesData).catch(err => console.warn('OfflineDB saveStores failed:', err));
+        }
+    }
+});
+</script>
+{% endblock %}

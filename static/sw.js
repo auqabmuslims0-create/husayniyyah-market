@@ -1,4 +1,4 @@
-const CACHE_NAME = 'husayniyyah-cache-v6';
+const CACHE_NAME = 'husayniyyah-cache-v7';
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -32,6 +32,26 @@ const PUBLIC_PATHS = [
   '/product/',
   '/store/'
 ];
+
+// مسارات لوحات التحكم التي نسمح بتخزينها (صفحات القراءة فقط)
+const PROTECTED_PATHS = [
+  '/admin/dashboard',
+  '/admin/orders',
+  '/admin/users',
+  '/admin/stores',
+  '/admin/subscriptions',
+  '/admin/chats',
+  '/admin/delivery-persons',
+  '/admin/finance',
+  '/store_owner/dashboard',
+  '/store_owner/products',
+  '/store_owner/categories',
+  '/store_owner/orders',
+  '/delivery/dashboard'
+];
+
+// دمج المسارات العامة والمحمية للتحقق من إمكانية التخزين
+const CACHEABLE_PATHS = [...PUBLIC_PATHS, ...PROTECTED_PATHS];
 
 // الصفحات الأساسية التي نريد تخزينها عند التثبيت
 const PAGES_TO_CACHE = [
@@ -82,9 +102,8 @@ self.addEventListener('fetch', event => {
 
   // للصفحات (navigate) نستخدم Network First مع cache fallback
   if (request.mode === 'navigate') {
-    // التحقق مما إذا كانت الصفحة عامة (يمكن تخزينها)
     const url = new URL(request.url);
-    const isPublicPath = PUBLIC_PATHS.some(path => {
+    const isCacheable = CACHEABLE_PATHS.some(path => {
       if (path === '/') return url.pathname === '/';
       if (path.endsWith('/')) return url.pathname.startsWith(path);
       return url.pathname === path || url.pathname.startsWith(path);
@@ -93,7 +112,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(response => {
-          if (response.ok && isPublicPath) {
+          if (response.ok && isCacheable) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }

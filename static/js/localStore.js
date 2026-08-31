@@ -1,5 +1,6 @@
 /**
  * LocalStore - إدارة السلة والمفضلة والملف الشخصي محلياً مع مزامنة خادم
+ * يعتمد على OfflineDB لتخزين بيانات المنتجات والمتاجر في IndexedDB
  */
 const LocalStore = (function() {
     const CART_KEY = 'local_cart';
@@ -54,6 +55,22 @@ const LocalStore = (function() {
             store_id: product.store_id || (product.store && product.store.id) || null
         };
         setProductsCache(cache);
+
+        if (typeof OfflineDB !== 'undefined') {
+            OfflineDB.saveProduct(product).catch(err => console.warn('OfflineDB saveProduct failed:', err));
+        }
+    }
+
+    function cacheStores(stores) {
+        if (typeof OfflineDB !== 'undefined' && Array.isArray(stores) && stores.length > 0) {
+            OfflineDB.saveStores(stores).catch(err => console.warn('OfflineDB saveStores failed:', err));
+        }
+    }
+
+    function cacheStore(store) {
+        if (typeof OfflineDB !== 'undefined' && store) {
+            OfflineDB.saveStore(store).catch(err => console.warn('OfflineDB saveStore failed:', err));
+        }
     }
 
     function getProfile() {
@@ -97,8 +114,47 @@ const LocalStore = (function() {
         });
     }
 
+    async function syncPendingOrders() {
+        if (!navigator.onLine || typeof OfflineDB === 'undefined') return;
+        try {
+            const pending = await OfflineDB.getAllPendingOrders();
+            if (!pending || pending.length === 0) return;
+            for (const order of pending) {
+                try {
+                    const csrfToken = window.csrfToken || '';
+                    const response = await fetch(`/cart/checkout/${order.store_id}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            items: order.items,
+                            delivery_address: order.delivery_address,
+                            latitude: order.latitude,
+                            longitude: order.longitude
+                        })
+                    });
+                    if (response.ok) {
+                        await OfflineDB.deletePendingOrder(order.local_id);
+                        console.log('تم إرسال طلب معلق بنجاح');
+                    } else {
+                        const data = await response.json().catch(() => ({}));
+                        console.warn('فشل إرسال الطلب المعلق:', data.message || response.status);
+                    }
+                } catch (err) {
+                    console.warn('خطأ في إرسال الطلب المعلق:', err);
+                }
+            }
+        } catch (err) {
+            console.warn('فشل جلب الطلبات المعلقة:', err);
+        }
+    }
+
     async function sync() {
         if (!navigator.onLine) return;
+        // مزامنة السلة والمفضلة أولاً
         const cart = getCart();
         const favs = getFavorites();
         try {
@@ -119,7 +175,6 @@ const LocalStore = (function() {
                 },
                 body: JSON.stringify({ favorites: favs })
             });
-            // مزامنة الملف الشخصي إذا وُجد
             const profile = getProfile();
             if (profile) {
                 await syncProfile(profile);
@@ -127,6 +182,8 @@ const LocalStore = (function() {
         } catch (err) {
             console.log('Local sync failed:', err);
         }
+        // مزامنة الطلبات المعلقة
+        syncPendingOrders();
     }
 
     async function syncProfile(profile) {
@@ -187,6 +244,8 @@ const LocalStore = (function() {
             favs[key].push(id);
             if (itemData && type === 'product') {
                 cacheProduct(itemData);
+            } else if (itemData && type === 'store') {
+                cacheStore(itemData);
             }
         }
         setFavorites(favs);
@@ -221,6 +280,8 @@ const LocalStore = (function() {
         toggleFavorite,
         isFavorite,
         cacheProduct,
+        cacheStores,
+        cacheStore,
         getProfile,
         setProfile,
         cacheProfile

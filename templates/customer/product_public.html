@@ -360,6 +360,39 @@ document.addEventListener('DOMContentLoaded', function() {
             updateStars(stars, current);
         });
     });
+
+    // حفظ المنتج والمتجر في IndexedDB
+    if (navigator.onLine && typeof OfflineDB !== 'undefined') {
+        const productData = {
+            id: {{ product.id }},
+            name: {{ product.name | tojson }},
+            price: {{ product.price }},
+            original_price: {{ product.original_price or 'null' }},
+            is_offer: {{ product.is_offer | lower }},
+            stock_quantity: {{ product.stock_quantity }},
+            main_image: {{ product.main_image | tojson if product.main_image else '""' }},
+            description: {{ product.description | tojson if product.description else '""' }},
+            store_id: {{ product.store.id if product.store else 'null' }},
+            store_name: {{ product.store.name | tojson if product.store and product.store.name else '""' }},
+            store_logo: {{ product.store.logo_url | tojson if product.store and product.store.logo_url else '""' }}
+        };
+        OfflineDB.saveProduct(productData).catch(err => console.warn('OfflineDB saveProduct failed:', err));
+
+        {% if product.store %}
+        const storeData = {
+            id: {{ product.store.id }},
+            name: {{ product.store.name | tojson }},
+            description: {{ product.store.description | tojson if product.store.description else '""' }},
+            logo_url: {{ product.store.logo_url | tojson if product.store.logo_url else '""' }},
+            phone: {{ product.store.phone | tojson if product.store.phone else '""' }},
+            address: {{ product.store.address | tojson if product.store.address else '""' }},
+            working_hours: {{ product.store.working_hours | tojson if product.store.working_hours else '""' }},
+            subscription_status: {{ product.store.subscription_status | tojson if product.store.subscription_status else '""' }},
+            is_open: false
+        };
+        OfflineDB.saveStore(storeData).catch(err => console.warn('OfflineDB saveStore failed:', err));
+        {% endif %}
+    }
 });
 </script>
 {% endblock %}
