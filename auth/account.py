@@ -129,13 +129,19 @@ def account_update():
 
     avatar_file = request.files.get('avatar')
     if avatar_file and avatar_file.filename != '':
-        avatar_url = save_image(avatar_file)
+        try:
+            avatar_url = save_image(avatar_file)
+        except Exception as e:
+            flash(f'استثناء أثناء الرفع: {str(e)}', 'error')
+            return redirect(url_for('auth.account'))
         if avatar_url:
-            # يمكن حذف الصورة القديمة من Cloudinary إذا كانت لدينا صلاحيات، لكن نتجاهل الآن
+            flash(f'تم رفع الصورة بنجاح: {avatar_url}', 'success')
             user.avatar = avatar_url
         else:
-            flash('تعذر رفع الصورة، تأكد من الصيغة والحجم', 'error')
+            flash('فشل رفع الصورة - save_image أرجعت None', 'error')
             return redirect(url_for('auth.account'))
+    else:
+        flash('لم يتم اختيار صورة', 'error')
 
     db.session.commit()
     flash('تم تحديث بيانات الحساب بنجاح', 'success')
