@@ -12,3 +12,4 @@ Pillow
 psycopg2-binary==2.9.9
 pywebpush==1.14.0
 cryptography==42.0.5
+cloudinary

@@ -8,6 +8,16 @@ from database import db
 # استيراد دوال التحقق من validators لإعادة تصديرها
 from shared.validators import is_strong_password, is_valid_email, is_valid_phone_syrian
 
+# إعداد Cloudinary
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET')
+)
+
 # ========== دوال عامة ==========
 
 def generate_public_id():
@@ -22,9 +32,11 @@ def generate_public_id():
             return pid
 
 def get_upload_path(filename):
-    """تحويل اسم الملف المخزن إلى مسار مطلق."""
+    """تحويل اسم الملف المخزن إلى مسار مطلق (للملفات المحلية القديمة)."""
     if not filename:
         return None
+    if filename.startswith('http'):
+        return None  # رابط سحابي لا يحتاج مسارًا محليًا
     if filename.startswith('uploads/'):
         return os.path.join(current_app.config['UPLOAD_FOLDER'], filename[len('uploads/'):])
     return os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
@@ -134,20 +146,26 @@ def _secure_file(file, allowed_extensions, max_size):
     return ext
 
 def save_image(file):
-    """حفظ صورة مع اسم فريد."""
+    """رفع صورة إلى Cloudinary وإرجاع الرابط السحابي."""
     ext = _secure_file(file, ALLOWED_IMAGE_EXTENSIONS, MAX_IMAGE_SIZE)
     if not ext:
         return None
-    unique_name = f"{uuid.uuid4().hex}.{ext}"
-    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_name)
     try:
-        file.save(file_path)
-        return unique_name
+        # إعادة تعيين مؤشر الملف للبداية
+        file.seek(0)
+        upload_result = cloudinary.uploader.upload(
+            file,
+            folder="husayniyyah_market/uploads",
+            resource_type="image",
+            quality="auto:good",
+            fetch_format="auto"
+        )
+        return upload_result.get('secure_url')
     except Exception:
         return None
 
 def save_video(file):
-    """حفظ فيديو مع اسم فريد."""
+    """حفظ فيديو محليًا (يمكن تحويله لاحقًا إلى Cloudinary)."""
     ext = _secure_file(file, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_SIZE)
     if not ext:
         return None
