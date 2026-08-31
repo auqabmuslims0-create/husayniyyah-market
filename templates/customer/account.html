@@ -358,14 +358,19 @@ document.getElementById('editProfileForm').addEventListener('submit', function(e
         bio
     };
     LocalStore.setProfile(profile);
-    // إذا كان غير متصل، نمنع الإرسال ونعرض رسالة
-    if (!navigator.onLine) {
+
+    // التحقق من وجود ملف صورة
+    const avatarInput = this.querySelector('input[name="avatar"]');
+    const hasAvatar = avatarInput && avatarInput.files.length > 0;
+
+    // إذا كان غير متصل ولا يوجد ملف صورة، نمنع الإرسال ونحفظ محلياً
+    if (!navigator.onLine && !hasAvatar) {
         e.preventDefault();
         showToast('تم حفظ التغييرات محلياً، ستتم مزامنتها عند الاتصال', 'info');
-        // إغلاق المودال
         const modal = bootstrap.Modal.getInstance(document.getElementById('editProfileModal'));
         if (modal) modal.hide();
     }
+    // إذا كان هناك ملف صورة، نسمح بالإرسال مباشرة (لأن رفع الصورة يتطلب اتصالاً)
 });
 
 // عند تحميل الصفحة، إذا كان غير متصل، نعرض البيانات المحلية بدلاً من الخادم
