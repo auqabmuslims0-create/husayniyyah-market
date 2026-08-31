@@ -1,9 +1,10 @@
 {
   "name": "سوق الحسينية",
   "short_name": "سوق الحسينية",
-  "description": "سوق إلكتروني محلي يربط المتاجر بالزبائن",
+  "description": "منصتك الأولى للتسوق الإلكتروني",
   "lang": "ar",
   "dir": "rtl",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -97,5 +98,6 @@
         }
       ]
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }

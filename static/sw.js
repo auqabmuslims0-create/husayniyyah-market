@@ -1,4 +1,4 @@
-const CACHE_NAME = 'husayniyyah-cache-v3';
+const CACHE_NAME = 'husayniyyah-cache-v4';
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -12,8 +12,13 @@ const STATIC_ASSETS = [
   '/static/vendor/bootstrap-icons/bootstrap-icons.min.css',
   '/static/vendor/bootstrap/js/bootstrap.bundle.min.js',
   '/static/vendor/fonts/tajawal.css',
+  '/static/icons/icon-96.png',
+  '/static/icons/icon-144.png',
   '/static/icons/icon-192.png',
+  '/static/icons/icon-384.png',
   '/static/icons/icon-512.png',
+  '/static/icons/icon-maskable.png',
+  '/static/icons/apple-touch-icon.png',
   '/static/offline.html'
 ];
 
