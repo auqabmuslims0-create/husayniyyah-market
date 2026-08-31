@@ -22,6 +22,7 @@ const STATIC_ASSETS = [
   '/static/offline.html'
 ];
 
+// الصفحات الأساسية التي نريد تخزينها عند التثبيت
 const PAGES_TO_CACHE = [
   '/onboarding',
   '/login',
@@ -34,7 +35,9 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
+        // تخزين الأصول الثابتة
         cache.addAll(STATIC_ASSETS);
+        // محاولة تخزين الصفحات الأساسية (بعضها قد يفشل بسبب تسجيل الدخول)
         return Promise.allSettled(
           PAGES_TO_CACHE.map(page =>
             fetch(page, {cache: 'no-store'})
@@ -66,6 +69,7 @@ self.addEventListener('fetch', event => {
 
   if (request.method !== 'GET') return;
 
+  // للصفحات (navigate) نستخدم Network First مع cache fallback
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -86,6 +90,23 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // للصور التي يرفعها المستخدمون (مثل الصور الرمزية) نستخدم Network First
+  if (request.destination === 'image' && request.url.includes('/static/uploads/')) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // للأصول الثابتة الأخرى نستخدم Cache First مع update في الخلفية
   if (
     request.destination === 'style' ||
     request.destination === 'script' ||
@@ -95,6 +116,7 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.match(request).then(cached => {
         if (cached) {
+          // تحديث في الخلفية
           fetch(request).then(response => {
             if (response.ok) {
               const clone = response.clone();
@@ -115,46 +137,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // لأي طلب آخر نمرره مباشرة
   event.respondWith(fetch(request));
-});
-
-// Push Notification Events
-self.addEventListener('push', event => {
-  let data = { title: 'إشعار جديد', message: 'لديك إشعار جديد', url: '/' };
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data = { title: 'إشعار جديد', message: event.data.text(), url: '/' };
-    }
-  }
-
-  const options = {
-    body: data.message,
-    icon: data.icon || '/static/icons/icon-192.png',
-    badge: data.badge || '/static/icons/icon-96.png',
-    data: {
-      url: data.url || '/'
-    }
-  };
-
-  event.waitUntil(self.registration.showNotification(data.title, options));
-});
-
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  const urlToOpen = event.notification.data.url || '/';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      for (let client of windowClients) {
-        if ('focus' in client) {
-          return client.focus();
-        }
-      }
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
-    })
-  );
 });

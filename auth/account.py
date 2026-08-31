@@ -129,16 +129,27 @@ def account_update():
 
     avatar_file = request.files.get('avatar')
     if avatar_file and avatar_file.filename != '':
-        avatar_filename = save_image(avatar_file)
-        if avatar_filename:
-            if user.avatar:
-                old_avatar = get_upload_path(user.avatar)
-                if os.path.exists(old_avatar):
-                    try:
-                        os.remove(old_avatar)
-                    except Exception:
-                        pass
-            user.avatar = avatar_filename
+        # توليد اسم فريد يتضمن معرف المستخدم لمنع أي تداخل
+        from werkzeug.utils import secure_filename
+        import uuid
+        ext = (secure_filename(avatar_file.filename).rsplit('.', 1)[1].lower()
+               if '.' in secure_filename(avatar_file.filename) else 'png')
+        # التحقق من الامتداد المسموح
+        if ext not in {'png', 'jpg', 'jpeg', 'gif', 'webp'}:
+            flash('صيغة الصورة غير مدعومة', 'error')
+            return redirect(url_for('auth.account'))
+        unique_name = f"user_{user.id}_{uuid.uuid4().hex}.{ext}"
+        file_path = get_upload_path(unique_name)
+        avatar_file.save(file_path)
+        # حذف الصورة القديمة إذا كانت موجودة
+        if user.avatar:
+            old_path = get_upload_path(user.avatar)
+            if os.path.exists(old_path):
+                try:
+                    os.remove(old_path)
+                except Exception:
+                    pass
+        user.avatar = unique_name
 
     db.session.commit()
     flash('تم تحديث بيانات الحساب بنجاح', 'success')

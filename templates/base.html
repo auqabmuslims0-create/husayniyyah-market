@@ -61,6 +61,7 @@
   </script>
 
   <style>
+    /* مؤشر انقطاع الاتصال */
     .connection-indicator {
       position: fixed;
       top: 50%;
@@ -92,6 +93,7 @@
       height: 18px;
     }
 
+    /* Splash Screen مخصصة */
     #appSplash {
       position: fixed;
       top: 0;
@@ -130,50 +132,18 @@
       50% { transform: scale(1.1); }
       100% { transform: scale(1); }
     }
-
-    /* تنسيق نافذة طلب الإشعارات المخصصة */
-    .push-modal .modal-content {
-      border-radius: 20px;
-      border: none;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    }
-    .push-modal .modal-body {
-      padding: 2rem;
-      text-align: center;
-    }
-    .push-modal .push-icon {
-      font-size: 3rem;
-      color: #2e5d34;
-      margin-bottom: 1rem;
-    }
-    .push-modal .btn-enable {
-      background-color: #2e5d34;
-      color: #fff;
-      border-radius: 30px;
-      padding: 0.6rem 2rem;
-      font-weight: bold;
-      border: none;
-    }
-    .push-modal .btn-enable:hover {
-      background-color: #1e4025;
-      color: #fff;
-    }
-    .push-modal .btn-later {
-      background: transparent;
-      color: #6c757d;
-      border: none;
-      text-decoration: underline;
-    }
   </style>
   {% block head %}{% endblock %}
 </head>
 <body class="{% if show_bottom_nav %}with-bottom-nav{% else %}no-bottom-nav{% endif %}">
 
+  <!-- شاشة Splash (مخفية افتراضياً) -->
   <div id="appSplash" style="display: none;">
     <img src="{{ url_for('static', filename='icons/icon-512.png') }}" alt="سوق الحسينية">
     <h1>سوق الحسينية</h1>
   </div>
 
+  <!-- مؤشر انقطاع الاتصال -->
   <div id="connectionIndicator" class="connection-indicator" role="alert">
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" fill="currentColor"/>
@@ -205,7 +175,7 @@
       <div class="text-center mb-3">
         <a href="{{ url_for('auth.account') if current_user else url_for('auth.login') }}" class="text-decoration-none">
           {% if current_user and current_user.avatar %}
-            <img src="{{ current_user.avatar | get_image_url }}" class="rounded-circle sidebar-avatar mb-2" alt="صورة المستخدم">
+            <img src="{{ current_user.avatar | get_image_url }}?v={{ current_user.avatar }}" class="rounded-circle sidebar-avatar mb-2" alt="صورة المستخدم">
           {% else %}
             <div class="sidebar-avatar-placeholder mb-2"><i class="bi bi-person"></i></div>
           {% endif %}
@@ -249,6 +219,7 @@
     {% block content %}{% endblock %}
   </main>
 
+  <!-- حاوية التوست العلوية -->
   <div class="toast-container-top" id="toastContainerTop">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -285,21 +256,6 @@
     <a href="{{ url_for('stores.stores_page') }}" class="bottom-nav-item {% if request.endpoint == 'stores.stores_page' %}active{% endif %}"><i class="bi bi-shop-window"></i><span>المتاجر</span></a>
   </nav>
   {% endif %}
-
-  <!-- نافذة طلب الإشعارات المخصصة -->
-  <div class="modal fade push-modal" id="pushNotificationModal" tabindex="-1" aria-labelledby="pushModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-body">
-          <i class="bi bi-bell-fill push-icon"></i>
-          <h5 class="fw-bold mb-3" id="pushModalLabel">تفعيل الإشعارات</h5>
-          <p class="text-muted mb-4">فعّل الإشعارات لتصلك تنبيهات الطلبات والعروض فور حدوثها حتى عندما يكون التطبيق مغلقًا.</p>
-          <button type="button" class="btn btn-enable mb-2 w-100" id="enablePushBtn">تفعيل الإشعارات</button>
-          <button type="button" class="btn btn-later" data-bs-dismiss="modal" id="laterPushBtn">لاحقًا</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <style>
     @media (display-mode: standalone) {
@@ -401,6 +357,7 @@
         }
     }
 
+    // مؤشر انقطاع الاتصال
     const connectionIndicator = document.getElementById('connectionIndicator');
     function updateConnectionStatus() {
       if (connectionIndicator) {
@@ -415,79 +372,58 @@
     window.addEventListener('offline', updateConnectionStatus);
     updateConnectionStatus();
 
-    // ===== Push Notification Subscription =====
-    async function requestAndSubscribe() {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        showToast('المتصفح لا يدعم الإشعارات', 'error');
+    // طلب إذن الإشعارات تلقائيًا عند أول تحميل
+    function requestNotificationPermission() {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted') return;
+      if (Notification.permission === 'denied') return;
+      // نطلب فقط إذا لم يطلب من قبل
+      if (localStorage.getItem('notifPermissionAsked') === 'true') return;
+      localStorage.setItem('notifPermissionAsked', 'true');
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          showToast('تم تفعيل الإشعارات', 'success');
+        }
+      }).catch(() => {});
+    }
+
+    // طلب الموقع الجغرافي عند الحاجة (يمكن استدعاؤها من أي صفحة)
+    window.requestLocationPermission = function() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error('Geolocation not supported'));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          position => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+          error => reject(error),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
+    };
+
+    // التحكم في شاشة السبلاش (تظهر مرة واحدة في الجلسة)
+    (function() {
+      const splash = document.getElementById('appSplash');
+      if (!splash) return;
+
+      // إذا ظهرت من قبل في هذه الجلسة، نتركها مخفية
+      if (sessionStorage.getItem('splash_shown')) {
         return;
       }
 
-      try {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-          showToast('تم رفض إذن الإشعارات', 'error');
-          return;
-        }
+      // أول ظهور في الجلسة: نعرضها ونضع علامة
+      splash.style.display = 'flex';
+      sessionStorage.setItem('splash_shown', 'true');
 
-        const registration = await navigator.serviceWorker.ready;
-        let subscription = await registration.pushManager.getSubscription();
-
-        if (!subscription) {
-          const resp = await fetch('/api/push/vapid_public_key');
-          const data = await resp.json();
-          const publicKey = data.public_key;
-
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(publicKey)
-          });
-        }
-
-        // إرسال الاشتراك إلى الخادم
-        await fetch('/api/push/subscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-          },
-          body: JSON.stringify({ subscription: subscription.toJSON() })
-        });
-        showToast('تم تفعيل الإشعارات بنجاح', 'success');
-        console.log('Push subscription saved');
-      } catch (err) {
-        console.error('Push subscription error:', err);
-        showToast('حدث خطأ في تفعيل الإشعارات', 'error');
-      }
-    }
-
-    function urlBase64ToUint8Array(base64String) {
-      const padding = '='.repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding)
-        .replace(/\-/g, '+')
-        .replace(/_/g, '/');
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-      }
-      return outputArray;
-    }
-
-    // عرض نافذة طلب الإشعارات بعد شاشات الترحيب أو تسجيل الدخول
-    function maybeShowPushModal() {
-      // لا نعرض إلا إذا كان المستخدم مسجلًا
-      {% if current_user %}
-        if (localStorage.getItem('push_modal_shown') === 'true') return;
-        if (Notification.permission !== 'default') return;
-
-        // نعرض بعد تأخير بسيط لضمان تحميل الصفحة
-        setTimeout(() => {
-          const modal = new bootstrap.Modal(document.getElementById('pushNotificationModal'));
-          modal.show();
-          localStorage.setItem('push_modal_shown', 'true');
-        }, 3000); // يمكن ضبط المدة حسب الحاجة
-      {% endif %}
-    }
+      // بعد 4 ثوانٍ نبدأ تأثير الإخفاء ثم الإزالة
+      setTimeout(function() {
+        splash.classList.add('fade-out');
+        setTimeout(function() {
+          splash.remove();
+        }, 500);
+      }, 4000);
+    })();
 
     document.addEventListener('DOMContentLoaded', function() {
       document.querySelectorAll('#toastContainerTop .toast').forEach(toastEl => {
@@ -507,21 +443,9 @@
       });
 
       LocalStore.updateCartBadges();
-
-      // عرض نافذة الإشعارات المخصصة
-      maybeShowPushModal();
+      // طلب إذن الإشعارات
+      requestNotificationPermission();
     });
-
-    // ربط زر التفعيل
-    const enablePushBtn = document.getElementById('enablePushBtn');
-    if (enablePushBtn) {
-      enablePushBtn.addEventListener('click', async () => {
-        await requestAndSubscribe();
-        // إغلاق النافذة بعد المحاولة
-        const modal = bootstrap.Modal.getInstance(document.getElementById('pushNotificationModal'));
-        if (modal) modal.hide();
-      });
-    }
 
     const themeBtn = document.getElementById('sidebarThemeToggle');
     if (themeBtn) {
