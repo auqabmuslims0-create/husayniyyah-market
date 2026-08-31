@@ -1,0 +1,86 @@
+import json
+from flask import current_app
+from pywebpush import webpush, WebPushException
+from py_vapid import Vapid
+from database import db
+import models
+from utils import get_setting, set_setting
+
+VAPID_SUBJECT = "mailto:admin@example.com"  # يمكن تغييرها لاحقًا
+
+def get_or_create_vapid_keys():
+    """جلب أو إنشاء مفاتيح VAPID وحفظها في الإعدادات."""
+    public_key = get_setting('vapid_public_key')
+    private_key = get_setting('vapid_private_key')
+    if public_key and private_key:
+        return public_key, private_key
+
+    # توليد مفاتيح جديدة
+    vapid = Vapid()
+    vapid.generate_keys()
+    public_key = vapid.public_key
+    private_key = vapid.private_key
+
+    set_setting('vapid_public_key', public_key)
+    set_setting('vapid_private_key', private_key)
+    return public_key, private_key
+
+def send_web_push(subscription_info, payload):
+    """إرسال إشعار Push لاشتراك معين."""
+    try:
+        public_key, private_key = get_or_create_vapid_keys()
+        webpush(
+            subscription_info=subscription_info,
+            data=json.dumps(payload),
+            vapid_private_key=private_key,
+            vapid_claims={"sub": VAPID_SUBJECT}
+        )
+        return True
+    except WebPushException as e:
+        current_app.logger.error(f"WebPushException: {e}")
+        if e.response and e.response.status_code in [404, 410]:
+            # الاشتراك لم يعد صالحًا
+            raise e
+        return False
+    except Exception as e:
+        current_app.logger.error(f"Push error: {e}")
+        return False
+
+def send_to_user(user_id, notification):
+    """إرسال إشعار Push لجميع اشتراكات المستخدم."""
+    subs = models.PushSubscription.query.filter_by(user_id=user_id).all()
+    if not subs:
+        return 0
+
+    payload = {
+        'title': notification.title or 'إشعار جديد',
+        'message': notification.message,
+        'url': notification.link or '/',
+        'icon': '/static/icons/icon-192.png',
+        'badge': '/static/icons/icon-96.png'
+    }
+
+    count_sent = 0
+    for sub in subs:
+        subscription_info = {
+            'endpoint': sub.endpoint,
+            'keys': {
+                'p256dh': sub.p256dh,
+                'auth': sub.auth
+            }
+        }
+        try:
+            if send_web_push(subscription_info, payload):
+                count_sent += 1
+        except WebPushException as e:
+            if e.response and e.response.status_code in [404, 410]:
+                db.session.delete(sub)
+                db.session.commit()
+    return count_sent
+
+def send_to_users(user_ids, notification):
+    """إرسال إشعار Push لعدة مستخدمين."""
+    count = 0
+    for uid in user_ids:
+        count += send_to_user(uid, notification)
+    return count

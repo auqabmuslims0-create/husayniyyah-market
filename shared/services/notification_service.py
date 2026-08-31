@@ -1,3 +1,4 @@
+from flask import current_app
 from database import db
 import models
 from time_utils import current_time
@@ -17,7 +18,7 @@ class NotificationService:
     PRIORITY_URGENT = 'urgent'
 
     @staticmethod
-    def send_to_user(user_id, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None):
+    def send_to_user(user_id, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None, send_push=True):
         if not user_id:
             return None
         if type_ is None:
@@ -37,40 +38,52 @@ class NotificationService:
             is_read=False
         )
         db.session.add(notif)
+        db.session.flush()  # للحصول على id قبل الإرسال
+
+        if send_push:
+            try:
+                from shared.services.push_service import send_to_user as push_send_to_user
+                push_send_to_user(user_id, notif)
+            except Exception as e:
+                current_app.logger.error(f"Failed to send push for notification {notif.id}: {e}")
+
         return notif
 
     @staticmethod
-    def send_to_store_owner(store, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None):
+    def send_to_store_owner(store, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None, send_push=True):
         if store and store.owner_id:
             return NotificationService.send_to_user(
                 store.owner_id, message, title=title, link=link,
                 type_=type_ or NotificationService.TYPE_ORDER,
-                priority=priority, icon=icon, extra_data=extra_data
+                priority=priority, icon=icon, extra_data=extra_data,
+                send_push=send_push
             )
         return None
 
     @staticmethod
-    def send_to_customer(order, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None):
+    def send_to_customer(order, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None, send_push=True):
         if order and order.customer_id:
             return NotificationService.send_to_user(
                 order.customer_id, message, title=title, link=link,
                 type_=type_ or NotificationService.TYPE_ORDER,
-                priority=priority, icon=icon, extra_data=extra_data
+                priority=priority, icon=icon, extra_data=extra_data,
+                send_push=send_push
             )
         return None
 
     @staticmethod
-    def send_to_delivery_person(user_id, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None):
+    def send_to_delivery_person(user_id, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None, send_push=True):
         if user_id:
             return NotificationService.send_to_user(
                 user_id, message, title=title, link=link,
                 type_=type_ or NotificationService.TYPE_DELIVERY,
-                priority=priority, icon=icon, extra_data=extra_data
+                priority=priority, icon=icon, extra_data=extra_data,
+                send_push=send_push
             )
         return None
 
     @staticmethod
-    def send_to_admins(message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None, exclude_user_id=None):
+    def send_to_admins(message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None, exclude_user_id=None, send_push=True):
         admins = models.User.query.filter_by(role='admin', is_active=True).all()
         notifs = []
         for admin in admins:
@@ -79,39 +92,41 @@ class NotificationService:
             n = NotificationService.send_to_user(
                 admin.id, message, title=title, link=link,
                 type_=type_ or NotificationService.TYPE_ALERT,
-                priority=priority, icon=icon, extra_data=extra_data
+                priority=priority, icon=icon, extra_data=extra_data,
+                send_push=send_push
             )
             if n:
                 notifs.append(n)
         return notifs
 
     @staticmethod
-    def send_to_role(role, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None):
+    def send_to_role(role, message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None, send_push=True):
         users = models.User.query.filter_by(role=role, is_active=True).all()
         notifs = []
         for user in users:
             n = NotificationService.send_to_user(
                 user.id, message, title=title, link=link,
                 type_=type_ or NotificationService.TYPE_INFO,
-                priority=priority, icon=icon, extra_data=extra_data
+                priority=priority, icon=icon, extra_data=extra_data,
+                send_push=send_push
             )
             if n:
                 notifs.append(n)
         return notifs
 
     @staticmethod
-    def send_to_all_users(message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None):
+    def send_to_all_users(message, title=None, link=None, type_=None, priority=None, icon=None, extra_data=None, send_push=True):
         users = models.User.query.filter_by(is_active=True).all()
         notifs = []
         for user in users:
             n = NotificationService.send_to_user(
                 user.id, message, title=title, link=link,
                 type_=type_ or NotificationService.TYPE_INFO,
-                priority=priority, icon=icon, extra_data=extra_data
+                priority=priority, icon=icon, extra_data=extra_data,
+                send_push=send_push
             )
             if n:
                 notifs.append(n)
-        # لا ننشئ إشعارًا عامًا لتجنب التكرار
         return notifs
 
     @staticmethod

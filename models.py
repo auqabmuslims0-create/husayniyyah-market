@@ -31,6 +31,7 @@ class User(db.Model):
     delivery_orders = db.relationship('Order', back_populates='delivery_person', foreign_keys='Order.delivery_person_id')
     cart_items = db.relationship('CartItem', back_populates='user', cascade="all, delete-orphan")
     payments = db.relationship('Payment', back_populates='user', cascade="all, delete-orphan")
+    push_subscriptions = db.relationship('PushSubscription', back_populates='user', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -304,6 +305,26 @@ class Notification(db.Model):
     )
 
     user = db.relationship('User', back_populates='notifications')
+
+class PushSubscription(db.Model):
+    __tablename__ = 'push_subscriptions'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    endpoint = db.Column(db.Text, nullable=False, unique=True)
+    p256dh = db.Column(db.String(200), nullable=False)
+    auth = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=current_time)
+
+    user = db.relationship('User', back_populates='push_subscriptions')
+
+    def to_dict(self):
+        return {
+            'endpoint': self.endpoint,
+            'keys': {
+                'p256dh': self.p256dh,
+                'auth': self.auth
+            }
+        }
 
 class Subscription(db.Model):
     __tablename__ = 'subscriptions'
