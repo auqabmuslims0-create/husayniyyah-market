@@ -94,7 +94,7 @@
     }
 
     /* Splash Screen مخصصة */
-     #appSplash {
+    #appSplash {
       position: fixed;
       top: 0;
       left: 0;
@@ -109,18 +109,18 @@
       opacity: 1;
       transition: opacity 0.5s ease;
     }
-     #appSplash.fade-out {
+    #appSplash.fade-out {
       opacity: 0;
       pointer-events: none;
     }
-     #appSplash img {
+    #appSplash img {
       width: 120px;
       height: 120px;
       border-radius: 30px;
       margin-bottom: 20px;
       animation: pulse 2s infinite;
     }
-     #appSplash h1 {
+    #appSplash h1 {
       color: #2d2d2d;
       font-family: 'Tajawal', sans-serif;
       font-weight: bold;
@@ -128,17 +128,17 @@
       margin: 0;
     }
     @keyframes pulse {
-     0% { transform: scale(1); }
-     50% { transform: scale(1.1); }
-     100% { transform: scale(1); }
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
     }
   </style>
   {% block head %}{% endblock %}
 </head>
 <body class="{% if show_bottom_nav %}with-bottom-nav{% else %}no-bottom-nav{% endif %}">
 
-  <!-- شاشة Splash -->
-  <div id="appSplash">
+  <!-- شاشة Splash (مخفية افتراضياً) -->
+  <div id="appSplash" style="display: none;">
     <img src="{{ url_for('static', filename='icons/icon-512.png') }}" alt="سوق الحسينية">
     <h1>سوق الحسينية</h1>
   </div>
@@ -402,32 +402,28 @@
       });
     };
 
-    // إخفاء شاشة Splash
-   function hideSplash() {
-     const splash = document.getElementById('appSplash');
-      if (splash) {
-       splash.classList.add('fade-out');
-       setTimeout(() => {
-         splash.remove();
-       }, 500);
-     }
-   }
+    // التحكم في شاشة السبلاش (تظهر مرة واحدة في الجلسة)
+    (function() {
+      const splash = document.getElementById('appSplash');
+      if (!splash) return;
 
-   // التحقق من ظهور السبلاش في هذه الجلسة
-   (function() {
-     const splashShown = sessionStorage.getItem('splash_shown');
-     if (splashShown) {
-       // إذا ظهرت من قبل في الجلسة، نزيلها فورًا دون انتظار
-       const splash = document.getElementById('appSplash');
-       if (splash) splash.remove();
-     } else {
-       // أول ظهور في الجلسة: نضع علامة ونخفيها بعد 4 ثوانٍ
-       sessionStorage.setItem('splash_shown', 'true');
-       window.addEventListener('load', function() {
-         setTimeout(hideSplash, 4000);
-       });
-     }
-   })();
+      // إذا ظهرت من قبل في هذه الجلسة، نتركها مخفية
+      if (sessionStorage.getItem('splash_shown')) {
+        return;
+      }
+
+      // أول ظهور في الجلسة: نعرضها ونضع علامة
+      splash.style.display = 'flex';
+      sessionStorage.setItem('splash_shown', 'true');
+
+      // بعد 4 ثوانٍ نبدأ تأثير الإخفاء ثم الإزالة
+      setTimeout(function() {
+        splash.classList.add('fade-out');
+        setTimeout(function() {
+          splash.remove();
+        }, 500);
+      }, 4000);
+    })();
 
     document.addEventListener('DOMContentLoaded', function() {
       document.querySelectorAll('#toastContainerTop .toast').forEach(toastEl => {
