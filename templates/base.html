@@ -402,20 +402,32 @@
       });
     };
 
-    // إخفاء شاشة Splash بعد 4 ثوانٍ
-    function hideSplash() {
-      const splash = document.getElementById('appSplash');
+    // إخفاء شاشة Splash
+   function hideSplash() {
+     const splash = document.getElementById('appSplash');
       if (splash) {
-        splash.classList.add('fade-out');
-        setTimeout(() => {
-          splash.remove();
-        }, 500); // مدة تأثير الاختفاء
-      }
-    }
-    // استدعاء الإخفاء عند اكتمال التحميل
-    window.addEventListener('load', function() {
-      setTimeout(hideSplash, 4000); // 4 ثواني
-    });
+       splash.classList.add('fade-out');
+       setTimeout(() => {
+         splash.remove();
+       }, 500);
+     }
+   }
+
+   // التحقق من ظهور السبلاش في هذه الجلسة
+   (function() {
+     const splashShown = sessionStorage.getItem('splash_shown');
+     if (splashShown) {
+       // إذا ظهرت من قبل في الجلسة، نزيلها فورًا دون انتظار
+       const splash = document.getElementById('appSplash');
+       if (splash) splash.remove();
+     } else {
+       // أول ظهور في الجلسة: نضع علامة ونخفيها بعد 4 ثوانٍ
+       sessionStorage.setItem('splash_shown', 'true');
+       window.addEventListener('load', function() {
+         setTimeout(hideSplash, 4000);
+       });
+     }
+   })();
 
     document.addEventListener('DOMContentLoaded', function() {
       document.querySelectorAll('#toastContainerTop .toast').forEach(toastEl => {
