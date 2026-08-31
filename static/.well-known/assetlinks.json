@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "app.railway.up.web_production_633ea.twa",
-        "sha256_cert_fingerprints": ["74:27:64:DE:5C:38:0F:26:51:44:00:A6:BA:8B:42:3B:E2:C8:E6:1D:56:DE:DD:3C:D7:C6:BE:E2:44:33:1D:8F"]
+        "sha256_cert_fingerprints": ["57:5F:08:30:05:81:94:F5:8C:0F:B4:76:AB:88:AD:53:7B:D2:58:4A:67:FA:26:1A:F3:05:31:2F:4C:19:01:15"]
       }
     }]
