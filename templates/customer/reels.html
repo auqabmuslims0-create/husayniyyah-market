@@ -288,20 +288,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-// ضبط نسبة أبعاد كل شريحة حسب أبعاد الفيديو الفعلية
-document.querySelectorAll('.reel-slide').forEach(slide => {
-    const video = slide.querySelector('.reel-video');
-    if (video) {
-        video.addEventListener('loadedmetadata', function() {
-            const aspectRatio = this.videoWidth / this.videoHeight;
-            if (aspectRatio > 0) {
-                slide.style.aspectRatio = aspectRatio;
-            }
-        });
-        // في حال كان الفيديو محملاً مسبقًا
-        if (video.readyState >= 1 && video.videoWidth > 0) {
-            video.dispatchEvent(new Event('loadedmetadata'));
-        }
-    }
-});
 {% endblock %}
