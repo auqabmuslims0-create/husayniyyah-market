@@ -174,10 +174,9 @@ def save_video(file):
         upload_result = cloudinary.uploader.upload(
             file,
             folder="husayniyyah_market/videos",
-            resource_type="video",
-            quality="auto:good",
-            fetch_format="auto"
+            resource_type="video"
         )
         return upload_result.get('secure_url')
-    except Exception:
+    except Exception as e:
+        current_app.logger.error(f"Video upload failed: {e}")
         return None
