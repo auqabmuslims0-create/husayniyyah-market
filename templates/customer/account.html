@@ -158,7 +158,7 @@
         <div class="card shadow-sm mb-4 profile-card">
             <div class="card-body text-center p-4">
                 {% if user.avatar %}
-                    <img src="{{ user.avatar | get_image_url }}?v={{ user.avatar }}" alt="صورتك الشخصية" class="avatar-image mb-3">
+                    <img src="{{ user.avatar | get_image_url }}" alt="صورتك الشخصية" class="avatar-image mb-3">
                 {% else %}
                     <div class="avatar-image mb-3 d-flex align-items-center justify-content-center bg-secondary text-white">
                         <i class="bi bi-person" style="font-size:3rem;"></i>
@@ -244,7 +244,7 @@
                         <label class="form-label">الصورة الشخصية</label>
                         {% if user.avatar %}
                             <div class="mb-2">
-                                <img src="{{ user.avatar | get_image_url }}?v={{ user.avatar }}" alt="صورتك" class="avatar-small-image" loading="lazy">
+                                <img src="{{ user.avatar | get_image_url }}" alt="صورتك" class="avatar-small-image" loading="lazy">
                             </div>
                         {% endif %}
                         <input type="file" name="avatar" accept="image/*" class="form-control">

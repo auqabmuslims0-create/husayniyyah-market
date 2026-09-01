@@ -175,7 +175,7 @@
       <div class="text-center mb-3">
         <a href="{{ url_for('auth.account') if current_user else url_for('auth.login') }}" class="text-decoration-none">
           {% if current_user and current_user.avatar %}
-            <img src="{{ current_user.avatar | get_image_url }}?v={{ current_user.avatar }}" class="rounded-circle sidebar-avatar mb-2" alt="صورة المستخدم">
+            <img src="{{ current_user.avatar | get_image_url }}" class="rounded-circle sidebar-avatar mb-2" alt="صورة المستخدم">
           {% else %}
             <div class="sidebar-avatar-placeholder mb-2"><i class="bi bi-person"></i></div>
           {% endif %}
