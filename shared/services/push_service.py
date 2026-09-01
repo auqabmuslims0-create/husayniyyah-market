@@ -64,6 +64,8 @@ def send_to_user(user_id, notification):
     }
 
     count_sent = 0
+    invalid_subs = []
+
     for sub in subs:
         subscription_info = {
             'endpoint': sub.endpoint,
@@ -77,8 +79,14 @@ def send_to_user(user_id, notification):
                 count_sent += 1
         except WebPushException as e:
             if e.response and e.response.status_code in [404, 410]:
-                db.session.delete(sub)
-                db.session.commit()
+                invalid_subs.append(sub)
+
+    # حذف الاشتراكات غير الصالحة دفعة واحدة
+    if invalid_subs:
+        for sub in invalid_subs:
+            db.session.delete(sub)
+        db.session.commit()
+
     return count_sent
 
 def send_to_users(user_ids, notification):

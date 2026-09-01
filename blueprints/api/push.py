@@ -38,8 +38,12 @@ def push_subscribe():
             existing.user_id = user_id
             existing.p256dh = p256dh
             existing.auth = auth
-            db.session.commit()
-            return jsonify({'message': 'تم تحديث الاشتراك'}), 200
+            try:
+                db.session.commit()
+                return jsonify({'message': 'تم تحديث الاشتراك'}), 200
+            except Exception:
+                db.session.rollback()
+                return jsonify({'message': 'حدث خطأ أثناء التحديث'}), 500
         return jsonify({'message': 'الاشتراك موجود بالفعل'}), 200
 
     new_sub = models.PushSubscription(
@@ -68,6 +72,10 @@ def push_unsubscribe():
     sub = models.PushSubscription.query.filter_by(endpoint=endpoint, user_id=user_id).first()
     if sub:
         db.session.delete(sub)
-        db.session.commit()
-        return jsonify({'message': 'تم إلغاء الاشتراك'}), 200
+        try:
+            db.session.commit()
+            return jsonify({'message': 'تم إلغاء الاشتراك'}), 200
+        except Exception:
+            db.session.rollback()
+            return jsonify({'message': 'حدث خطأ أثناء الإلغاء'}), 500
     return jsonify({'message': 'لا يوجد اشتراك مطابق'}), 404
