@@ -102,10 +102,14 @@ def new_product(store_id):
         video_file = request.files.get('video')
         video_filename = None
         if video_file and video_file.filename != '':
-            video_filename = save_video(video_file)
-            if not video_filename:
-                flash('صيغة الفيديو غير مدعومة (MP4, MOV, AVI فقط)', 'error')
-                return redirect(url_for('store.new_product', store_id=store.id))
+          try:
+              video_filename = save_video(video_file)
+          except Exception as e:
+              current_app.logger.error(f"Video upload exception: {e}")
+              video_filename = None
+          if not video_filename:
+              flash('فشل رفع الفيديو، تأكد من الصيغة (MP4, MOV, AVI) وحجم الملف (أقل من 50MB) وجودة الاتصال', 'error')
+              return redirect(url_for('store.new_product', store_id=store.id))
 
         final_price = price
         if is_offer:
@@ -254,7 +258,11 @@ def edit_product(store_id, product_id):
         else:
             video_file = request.files.get('video')
             if video_file and video_file.filename != '':
-                new_video = save_video(video_file)
+                try:
+                    new_video = save_video(video_file)
+                except Exception as e:
+                    current_app.logger.error(f"Video upload exception: {e}")
+                    new_video = None
                 if new_video:
                     if product.video:
                         old_video = get_upload_path(product.video)
@@ -263,7 +271,10 @@ def edit_product(store_id, product_id):
                                 os.remove(old_video)
                             except Exception:
                                 pass
-                    product.video = new_video
+                product.video = new_video
+            else:
+                flash('فشل رفع الفيديو، حاول مرة أخرى لاحقًا', 'error')
+                return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
 
         product.name = name
         product.product_code = product_code
