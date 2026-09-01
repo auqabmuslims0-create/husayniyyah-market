@@ -92,7 +92,26 @@ def register():
             avatar_file = request.files.get('avatar')
             bio = request.form.get('bio', '').strip()
 
-            avatar_filename = save_image(avatar_file) if avatar_file and avatar_file.filename != '' else None
+            avatar_url = None
+            if avatar_file and avatar_file.filename != '':
+                # فحص حجم الملف قبل الرفع
+                avatar_file.seek(0, os.SEEK_END)
+                file_size = avatar_file.tell()
+                avatar_file.seek(0)
+
+                if file_size > 10 * 1024 * 1024:  # 10MB
+                    flash('حجم الصورة كبير جداً (الحد الأقصى 10MB)', 'error')
+                    return redirect(url_for('auth.register', step=3))
+
+                try:
+                    avatar_url = save_image(avatar_file)
+                except Exception as e:
+                    flash(f'حدث خطأ أثناء رفع الصورة: {str(e)}', 'error')
+                    return redirect(url_for('auth.register', step=3))
+
+                if not avatar_url:
+                    flash('فشل رفع الصورة، تأكد من الصيغة المدعومة (png, jpg, jpeg, gif, webp)', 'error')
+                    return redirect(url_for('auth.register', step=3))
 
             user = models.User(
                 username=reg['username'],
@@ -101,7 +120,7 @@ def register():
                 password_hash=generate_password_hash(reg['password']),
                 role=reg['role'],
                 public_id=generate_public_id(),
-                avatar=avatar_filename,
+                avatar=avatar_url,
                 bio=bio
             )
             db.session.add(user)
@@ -168,7 +187,6 @@ def login():
 
             if remember_me:
                 session.permanent = True
-                # إعداد مدة الجلسة في app.py
 
             flash('تم تسجيل الدخول', 'success')
             return redirect(url_for('auth.dashboard'))
