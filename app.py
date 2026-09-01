@@ -69,34 +69,36 @@ def get_secret_key():
     key = os.environ.get('SECRET_KEY')
     if key:
         return key
-    key_file = os.path.join(app.instance_path, '.secret_key')
-    if os.path.exists(key_file):
-        with open(key_file, 'r') as f:
-            return f.read().strip()
-    key = secrets.token_hex(32)
-    os.makedirs(app.instance_path, exist_ok=True)
-    with open(key_file, 'w') as f:
-        f.write(key)
-    os.chmod(key_file, 0o600)
-    return key
-
-app.config['SECRET_KEY'] = get_secret_key()
-app.config['PERMANENT_SESSION_LIFETIME'] = 30 * 24 * 60 * 60
+    # في بيئة التطوير فقط نستخدم ملف
+    if os.environ.get('FLASK_ENV') != 'production':
+        key_file = os.path.join(app.instance_path, '.secret_key')
+        if os.path.exists(key_file):
+            with open(key_file, 'r') as f:
+                return f.read().strip()
+        key = secrets.token_hex(32)
+        os.makedirs(app.instance_path, exist_ok=True)
+        with open(key_file, 'w') as f:
+            f.write(key)
+        os.chmod(key_file, 0o600)
+        return key
+    raise RuntimeError('SECRET_KEY must be set in production environment')
 
 def get_jwt_secret_key():
     key = os.environ.get('JWT_SECRET_KEY')
     if key:
         return key
-    key_file = os.path.join(app.instance_path, '.jwt_secret_key')
-    if os.path.exists(key_file):
-        with open(key_file, 'r') as f:
-            return f.read().strip()
-    key = secrets.token_hex(32)
-    os.makedirs(app.instance_path, exist_ok=True)
-    with open(key_file, 'w') as f:
-        f.write(key)
-    os.chmod(key_file, 0o600)
-    return key
+    if os.environ.get('FLASK_ENV') != 'production':
+        key_file = os.path.join(app.instance_path, '.jwt_secret_key')
+        if os.path.exists(key_file):
+            with open(key_file, 'r') as f:
+                return f.read().strip()
+        key = secrets.token_hex(32)
+        os.makedirs(app.instance_path, exist_ok=True)
+        with open(key_file, 'w') as f:
+            f.write(key)
+        os.chmod(key_file, 0o600)
+        return key
+    raise RuntimeError('JWT_SECRET_KEY must be set in production environment')
 
 app.config['JWT_SECRET_KEY'] = get_jwt_secret_key()
 
