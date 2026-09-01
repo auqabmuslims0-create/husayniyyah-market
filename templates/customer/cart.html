@@ -62,6 +62,8 @@
     .cart-item-actions {
         display: flex;
         gap: 5px;
+        align-items: center;
+        flex-wrap: wrap;
     }
     .btn-buy-now {
         background-color: var(--primary);
@@ -72,9 +74,9 @@
         font-size: 0.8rem;
         cursor: pointer;
         transition: background 0.2s;
-        flex: 1;
         text-decoration: none;
         text-align: center;
+        white-space: nowrap;
     }
     .btn-buy-now:hover {
         background-color: var(--primary-dark);
@@ -88,6 +90,32 @@
         align-items: center;
         justify-content: center;
         padding: 0;
+        flex-shrink: 0;
+    }
+    .pickup-only-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        color: #856404;
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    body.dark-mode .pickup-only-note {
+        color: #ffe69c;
+        background: #3e2e00;
+        border-color: #8a6d3b;
+    }
+    .pickup-only-note i {
+        color: #f0ad4e;
+        font-size: 0.9rem;
+    }
+    body.dark-mode .pickup-only-note i {
+        color: #ffc107;
     }
     .store-card-header {
         background: #f8f9fa;
@@ -310,7 +338,11 @@
                                 <div class="cart-item-name">{{ item.product.name }}</div>
                                 <div class="cart-item-price">{{ item.product.price|format_price }} ل.س</div>
                                 <div class="cart-item-actions">
-                                    <a href="{{ url_for('cart.buy_product', product_id=item.product.id) }}" class="btn-buy-now">شراء الآن</a>
+                                    {% if group.store.has_delivery %}
+                                        <a href="{{ url_for('cart.buy_product', product_id=item.product.id) }}" class="btn-buy-now">شراء الآن</a>
+                                    {% else %}
+                                        <div class="pickup-only-note"><i class="bi bi-shop"></i> استلام حصرا من المتجر</div>
+                                    {% endif %}
                                     <button class="btn btn-outline-danger btn-remove btn-sm" data-product-id="{{ item.product.id }}" title="إزالة"><i class="bi bi-trash"></i></button>
                                 </div>
                             </div>
@@ -420,32 +452,22 @@
 <script src="{{ url_for('static', filename='vendor/qrcodejs/qrcode.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // توليد QR code لكل طلب
     document.querySelectorAll('.qr-container').forEach(container => {
         const orderId = container.id.replace('qr-container-', '');
         const code = container.closest('.order-card-new').querySelector('.delivery-code-display').textContent.trim();
         if (code && typeof QRCode !== 'undefined') {
-            new QRCode(container, {
-                text: code,
-                width: 80,
-                height: 80,
-                correctLevel: QRCode.CorrectLevel.M
-            });
+            new QRCode(container, { text: code, width: 80, height: 80, correctLevel: QRCode.CorrectLevel.M });
         }
     });
 
-    // إزالة منتج من السلة
     window.clearLocalCart = function() {
         LocalStore.setCart({});
         LocalStore.updateCartBadges();
         location.reload();
     };
-    // تعديل: حذف منتجات متجر محدد فقط
     window.clearLocalStoreCart = function(storeId, productIds) {
         const cart = LocalStore.getCart();
-        productIds.forEach(pid => {
-            delete cart[String(pid)];
-        });
+        productIds.forEach(pid => { delete cart[String(pid)]; });
         LocalStore.setCart(cart);
         LocalStore.updateCartBadges();
         location.reload();
@@ -462,7 +484,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // التحقق من عدم الاتصال وعرض السلة المحلية
     if (!navigator.onLine) {
         document.querySelectorAll('.server-cart').forEach(el => el.style.display = 'none');
         const localCartContainer = document.getElementById('localCartContainer');
@@ -480,16 +501,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="cart-item-body">
                             <div class="cart-item-name">${p.name || 'منتج'}</div>
                             <div class="cart-item-price">${p.price || 0} ل.س</div>
-                            <div>الكمية: ${qty}</div>
-                            <button class="btn btn-sm btn-outline-danger" onclick="LocalStore.removeFromCart(${pid}); location.reload();"><i class="bi bi-trash"></i></button>
+                            <div class="cart-item-actions">
+                                <div class="pickup-only-note"><i class="bi bi-shop"></i> استلام حصرا من المتجر</div>
+                                <button class="btn btn-sm btn-outline-danger" onclick="LocalStore.removeFromCart(${pid}); location.reload();"><i class="bi bi-trash"></i></button>
+                            </div>
                         </div>
                     </div>
                 </div>`;
         }
         html += '</div>';
-        if (Object.keys(cart).length === 0) {
-            html = '<p class="text-muted">سلتك فارغة</p>';
-        }
+        if (Object.keys(cart).length === 0) html = '<p class="text-muted">سلتك فارغة</p>';
         localCartContainer.innerHTML = html;
     }
 });
