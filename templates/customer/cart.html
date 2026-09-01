@@ -341,7 +341,7 @@
                                     {% if group.store.has_delivery %}
                                         <a href="{{ url_for('cart.buy_product', product_id=item.product.id) }}" class="btn-buy-now">شراء الآن</a>
                                     {% else %}
-                                        <div class="pickup-only-note"><i class="bi bi-shop"></i> استلام حصرا من المتجر</div>
+                                        <div class="pickup-only-note"><i class="bi bi-shop"></i> حصرا من المتجر</div>
                                     {% endif %}
                                     <button class="btn btn-outline-danger btn-remove btn-sm" data-product-id="{{ item.product.id }}" title="إزالة"><i class="bi bi-trash"></i></button>
                                 </div>
