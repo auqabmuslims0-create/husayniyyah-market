@@ -165,14 +165,19 @@ def save_image(file):
         return None
 
 def save_video(file):
-    """حفظ فيديو محليًا (يمكن تحويله لاحقًا إلى Cloudinary)."""
+    """رفع فيديو إلى Cloudinary وإرجاع الرابط السحابي."""
     ext = _secure_file(file, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_SIZE)
     if not ext:
         return None
-    unique_name = f"{uuid.uuid4().hex}.{ext}"
-    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], unique_name)
     try:
-        file.save(file_path)
-        return unique_name
+        file.seek(0)
+        upload_result = cloudinary.uploader.upload(
+            file,
+            folder="husayniyyah_market/videos",
+            resource_type="video",
+            quality="auto:good",
+            fetch_format="auto"
+        )
+        return upload_result.get('secure_url')
     except Exception:
         return None
