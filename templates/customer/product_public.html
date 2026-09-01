@@ -574,39 +574,35 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // التحكم في فيديو المنتج
-    const productVideo = document.querySelector('[data-product-reel-video]');
-    if (productVideo) {
-        const slide = productVideo.closest('.product-reel-slide');
-        const overlay = slide.querySelector('[data-play-overlay]');
-        const playBtn = slide.querySelector('[data-play-btn]');
-
-        function playVideo() {
-            productVideo.muted = false; // تفعيل الصوت
-            productVideo.play().catch(() => {});
-            if (overlay) overlay.classList.add('hidden');
-        }
-
-        function pauseVideo() {
-            productVideo.pause();
-            if (overlay) overlay.classList.remove('hidden');
-        }
-
+    // التحكم في فيديو المنتج باستخدام تفويض الأحداث
+    document.addEventListener('click', function(e) {
+        const playBtn = e.target.closest('[data-play-btn]');
         if (playBtn) {
-            playBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                playVideo();
-            });
+            e.stopPropagation();
+            const slide = playBtn.closest('.product-reel-slide');
+            const video = slide ? slide.querySelector('[data-product-reel-video]') : null;
+            if (video) {
+                video.muted = false;
+                video.play().catch(() => {});
+                const overlay = slide.querySelector('[data-play-overlay]');
+                if (overlay) overlay.classList.add('hidden');
+            }
         }
 
-        productVideo.addEventListener('click', function() {
-            if (productVideo.paused) {
-                playVideo();
+        const videoElement = e.target.closest('[data-product-reel-video]');
+        if (videoElement) {
+            if (videoElement.paused) {
+                videoElement.muted = false;
+                videoElement.play().catch(() => {});
+                const overlay = videoElement.closest('.product-reel-slide').querySelector('[data-play-overlay]');
+                if (overlay) overlay.classList.add('hidden');
             } else {
-                pauseVideo();
+                videoElement.pause();
+                const overlay = videoElement.closest('.product-reel-slide').querySelector('[data-play-overlay]');
+                if (overlay) overlay.classList.remove('hidden');
             }
-        });
-    }
+        }
+    });
 
     // حفظ المنتج والمتجر في IndexedDB
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {

@@ -606,114 +606,54 @@ function copyStoreLink() {
 }
 
 // التحكم في فيديوهات المتجر بأسلوب الريلز
-document.addEventListener('DOMContentLoaded', function() {
-    const storeVideos = document.querySelectorAll('[data-store-reel-video]');
+document.addEventListener('click', function(e) {
+    const playBtn = e.target.closest('[data-play-btn]');
+    if (playBtn) {
+        e.stopPropagation();
+        const slide = playBtn.closest('.reel-slide');
+        const video = slide ? slide.querySelector('[data-store-reel-video]') : null;
+        if (video) {
+            // إيقاف جميع الفيديوهات
+            document.querySelectorAll('[data-store-reel-video]').forEach(v => {
+                v.pause();
+                const ov = v.closest('.reel-slide').querySelector('[data-play-overlay]');
+                if (ov) ov.classList.remove('hidden');
+            });
+            video.muted = false;
+            video.play().catch(() => {});
+            const overlay = slide.querySelector('[data-play-overlay]');
+            if (overlay) overlay.classList.add('hidden');
+        }
+    }
 
-    function pauseAllStoreVideos() {
-        storeVideos.forEach(video => {
-            video.pause();
-            const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
+    // النقر على الفيديو نفسه
+    const videoElement = e.target.closest('[data-store-reel-video]');
+    if (videoElement) {
+        if (videoElement.paused) {
+            document.querySelectorAll('[data-store-reel-video]').forEach(v => {
+                v.pause();
+                const ov = v.closest('.reel-slide').querySelector('[data-play-overlay]');
+                if (ov) ov.classList.remove('hidden');
+            });
+            videoElement.muted = false;
+            videoElement.play().catch(() => {});
+            const overlay = videoElement.closest('.reel-slide').querySelector('[data-play-overlay]');
+            if (overlay) overlay.classList.add('hidden');
+        } else {
+            videoElement.pause();
+            const overlay = videoElement.closest('.reel-slide').querySelector('[data-play-overlay]');
             if (overlay) overlay.classList.remove('hidden');
-        });
-    }
-
-    function playStoreVideo(video) {
-        pauseAllStoreVideos();
-        video.muted = false; // تفعيل الصوت
-        video.play().catch(() => {});
-        const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
-        if (overlay) overlay.classList.add('hidden');
-    }
-
-    // ربط أزرار التشغيل
-    document.querySelectorAll('#videos-tab [data-play-btn]').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const video = this.closest('.reel-slide').querySelector('[data-store-reel-video]');
-            if (video) playStoreVideo(video);
-        });
-    });
-
-    // النقر على الفيديو
-    storeVideos.forEach(video => {
-        video.addEventListener('click', function() {
-            if (video.paused) {
-                playStoreVideo(video);
-            } else {
-                video.pause();
-                const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
-                if (overlay) overlay.classList.remove('hidden');
-            }
-        });
-    });
-
-    // عند مغادرة التبويب، أوقف الفيديوهات
-    const videosTabBtn = document.getElementById('videos-tab-btn');
-    if (videosTabBtn) {
-        videosTabBtn.addEventListener('hidden.bs.tab', function() {
-            pauseAllStoreVideos();
-        });
+        }
     }
 });
 
-// حفظ المتجر والمنتجات في IndexedDB
-document.addEventListener('DOMContentLoaded', function() {
-    if (navigator.onLine && typeof OfflineDB !== 'undefined') {
-        const storeData = {
-            id: {{ store.id }},
-            name: {{ store.name | tojson }},
-            description: {{ store.description | tojson if store.description else '""' }},
-            logo_url: {{ store.logo_url | tojson if store.logo_url else '""' }},
-            phone: {{ store.phone | tojson if store.phone else '""' }},
-            address: {{ store.address | tojson if store.address else '""' }},
-            working_hours: {{ store.working_hours | tojson if store.working_hours else '""' }},
-            subscription_status: {{ store.subscription_status | tojson if store.subscription_status else '""' }},
-            is_open: {{ open_status | lower }}
-        };
-        OfflineDB.saveStore(storeData).catch(err => console.warn('OfflineDB saveStore failed:', err));
-
-        const productsData = [
-            {% for product in products %}
-            {
-                id: {{ product.id }},
-                name: {{ product.name | tojson }},
-                price: {{ product.price }},
-                original_price: {{ product.original_price or 'null' }},
-                is_offer: {{ product.is_offer | lower }},
-                stock_quantity: {{ product.stock_quantity }},
-                main_image: {{ product.main_image | tojson if product.main_image else '""' }},
-                description: {{ product.description | tojson if product.description else '""' }},
-                store_id: {{ product.store.id if product.store else 'null' }},
-                store_name: {{ product.store.name | tojson if product.store and product.store.name else '""' }},
-                store_logo: {{ product.store.logo_url | tojson if product.store and product.store.logo_url else '""' }}
-            }{{ ',' if not loop.last }}
-            {% endfor %}
-        ];
-        if (productsData.length) {
-            OfflineDB.saveProducts(productsData).catch(err => console.warn('OfflineDB saveProducts failed:', err));
-        }
-
-        const featuredData = [
-            {% for product in featured_products %}
-            {
-                id: {{ product.id }},
-                name: {{ product.name | tojson }},
-                price: {{ product.price }},
-                original_price: {{ product.original_price or 'null' }},
-                is_offer: {{ product.is_offer | lower }},
-                stock_quantity: {{ product.stock_quantity }},
-                main_image: {{ product.main_image | tojson if product.main_image else '""' }},
-                description: {{ product.description | tojson if product.description else '""' }},
-                store_id: {{ product.store.id if product.store else 'null' }},
-                store_name: {{ product.store.name | tojson if product.store and product.store.name else '""' }},
-                store_logo: {{ product.store.logo_url | tojson if product.store and product.store.logo_url else '""' }}
-            }{{ ',' if not loop.last }}
-            {% endfor %}
-        ];
-        if (featuredData.length) {
-            OfflineDB.saveProducts(featuredData).catch(err => console.warn('OfflineDB saveProducts (featured) failed:', err));
-        }
-    }
+// عند مغادرة التبويب، أوقف الفيديوهات
+document.getElementById('videos-tab-btn').addEventListener('hidden.bs.tab', function() {
+    document.querySelectorAll('[data-store-reel-video]').forEach(video => {
+        video.pause();
+        const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
+        if (overlay) overlay.classList.remove('hidden');
+    });
 });
 </script>
 {% endblock %}
