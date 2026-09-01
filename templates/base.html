@@ -484,27 +484,97 @@
 
   <!-- تسجيل Service Worker -->
   <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(reg => {
-            console.log('Service Worker registered');
-            reg.addEventListener('updatefound', () => {
-              const newWorker = reg.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    window.location.reload();
-                  }
-                });
-              }
-            });
-          })
-          .catch(err => console.log('Service Worker registration failed', err));
-      });
-    }
-  </script>
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+        window.addEventListener('load', async () => {
+            try {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                console.log('Service Worker registered');
 
+                // طلب إذن الإشعارات (إذا لم يُمنح مسبقاً)
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    // جلب مفتاح VAPID العام من الخادم
+                    const vapidResponse = await fetch('/api/push/vapid_public_key');
+                    const vapidData = await vapidResponse.json();
+                    const vapidPublicKey = vapidData.public_key;
+
+                    const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+
+                    const subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: convertedVapidKey
+                    });
+
+                    // إرسال الاشتراك إلى الخادم
+                    await fetch('/api/push/subscribe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': window.csrfToken
+                        },
+                        body: JSON.stringify({ subscription: subscription.toJSON() })
+                    });
+                    console.log('Push subscription sent');
+                }
+            } catch (err) {
+                console.error('Service Worker registration or push subscription failed', err);
+            }
+        });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    }
+</script>
+<script>
+function fetchUpdates() {
+    fetch('/api/updates', {headers: {'Accept': 'application/json'}})
+    .then(res => res.json())
+    .then(data => {
+        // تحديث شارة الإشعارات في القائمة الجانبية
+        const unreadBadge = document.querySelector('.badge.bg-warning');
+        if (data.unread_notifications > 0) {
+            if (unreadBadge) {
+                unreadBadge.textContent = data.unread_notifications;
+                unreadBadge.style.display = 'inline';
+            }
+            const dot = document.querySelector('.notification-dot');
+            if (dot) dot.style.display = 'block';
+        } else {
+            if (unreadBadge) unreadBadge.style.display = 'none';
+            const dot = document.querySelector('.notification-dot');
+            if (dot) dot.style.display = 'none';
+        }
+
+        // تنبيه فوري لأصحاب المتاجر عند وجود طلبات جديدة
+        if (data.new_orders_count > 0) {
+            showToast('لديك ' + data.new_orders_count + ' طلب جديد بانتظار التأكيد', 'info');
+        }
+        // تنبيه للمندوب
+        if (data.delivery_new_orders_count > 0) {
+            showToast('لديك ' + data.delivery_new_orders_count + ' طلب جاهز للتسليم', 'info');
+        }
+        // تنبيه للأدمن
+        if (data.admin_pending_subscriptions > 0) {
+            showToast('لديك ' + data.admin_pending_subscriptions + ' اشتراك معلق', 'info');
+        }
+    })
+    .catch(err => console.log('Update fetch failed', err));
+}
+
+// تشغيل الجلب كل 15 ثانية
+setInterval(fetchUpdates, 15000);
+fetchUpdates();
+</script>
 {% block scripts %}
 {% endblock %}
 </body>

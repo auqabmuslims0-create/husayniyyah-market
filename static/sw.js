@@ -38,7 +38,6 @@ const PUBLIC_PATHS = [
 ];
 
 // مسارات لوحات التحكم التي نسمح بتخزينها (صفحات القراءة فقط)
-// تم التصحيح لتطابق المسارات الفعلية
 const PROTECTED_PATHS = [
   '/admin',
   '/my_stores',
@@ -46,10 +45,8 @@ const PROTECTED_PATHS = [
   '/delivery'
 ];
 
-// دمج المسارات العامة والمحمية للتحقق من إمكانية التخزين
 const CACHEABLE_PATHS = [...PUBLIC_PATHS, ...PROTECTED_PATHS];
 
-// الصفحات الأساسية التي نريد تخزينها عند التثبيت
 const PAGES_TO_CACHE = [
   '/',
   '/market',
@@ -66,9 +63,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        // تخزين الأصول الثابتة
         cache.addAll(STATIC_ASSETS);
-        // محاولة تخزين الصفحات العامة الأساسية
         return Promise.allSettled(
           PAGES_TO_CACHE.map(page =>
             fetch(page, {cache: 'no-store'})
@@ -100,7 +95,6 @@ self.addEventListener('fetch', event => {
 
   if (request.method !== 'GET') return;
 
-  // للصفحات (navigate) نستخدم Network First مع cache fallback
   if (request.mode === 'navigate') {
     const url = new URL(request.url);
     const isCacheable = CACHEABLE_PATHS.some(path => {
@@ -121,7 +115,6 @@ self.addEventListener('fetch', event => {
         .catch(() => {
           return caches.match(request).then(cached => {
             if (cached) return cached;
-            // إذا لم توجد نسخة مخزنة، نعرض صفحة offline
             return caches.match('/static/offline.html');
           });
         })
@@ -129,7 +122,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // للصور التي يرفعها المستخدمون (مثل الصور الرمزية) نستخدم Network First
   if (request.destination === 'image' && request.url.includes('/static/uploads/')) {
     event.respondWith(
       fetch(request)
@@ -145,7 +137,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // للأصول الثابتة الأخرى نستخدم Cache First مع update في الخلفية
   if (
     request.destination === 'style' ||
     request.destination === 'script' ||
@@ -155,7 +146,6 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.match(request).then(cached => {
         if (cached) {
-          // تحديث في الخلفية
           fetch(request).then(response => {
             if (response.ok) {
               const clone = response.clone();
@@ -176,6 +166,47 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // لأي طلب آخر نمرره مباشرة
   event.respondWith(fetch(request));
+});
+
+// ===== Push Notifications =====
+self.addEventListener('push', event => {
+  console.log('Push received', event);
+  let data = { title: 'سوق الحسينية', message: 'إشعار جديد', url: '/' };
+
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'سوق الحسينية', message: event.data.text(), url: '/' };
+    }
+  }
+
+  const options = {
+    body: data.message || data.body,
+    icon: data.icon || '/static/icons/icon-192.png',
+    badge: data.badge || '/static/icons/icon-96.png',
+    data: { url: data.url || '/' }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'سوق الحسينية', options)
+  );
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data && event.notification.data.url ? event.notification.data.url : '/';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      for (let client of windowClients) {
+        if (client.url === url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
 });
