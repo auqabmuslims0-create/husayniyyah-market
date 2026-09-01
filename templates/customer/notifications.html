@@ -126,11 +126,11 @@
                         <button type="submit" class="btn btn-action btn-mark-read" title="تعليم كمقروء"><i class="bi bi-check"></i></button>
                     </form>
                     {% endif %}
-                    <!-- زر حذف يفتح المودال -->
+                    <!-- زر حذف يفتح المودال ويمرر رابط الحذف مباشرة -->
                     <button type="button" class="btn btn-action btn-delete"
                             data-bs-toggle="modal"
                             data-bs-target="#deleteNotificationModal"
-                            data-notif-id="{{ notif.id }}"
+                            data-delete-url="{{ url_for('account.delete_notification', notif_id=notif.id) }}"
                             title="حذف">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -176,9 +176,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (deleteModal) {
         deleteModal.addEventListener('show.bs.modal', function(event) {
             const button = event.relatedTarget;
-            const notifId = button.getAttribute('data-notif-id');
-            const action = "{{ url_for('account.delete_notification', notif_id='') }}" + notifId;
-            deleteForm.action = action;
+            const deleteUrl = button.getAttribute('data-delete-url');
+            if (deleteForm && deleteUrl) {
+                deleteForm.action = deleteUrl;
+            }
         });
     }
 });
