@@ -38,29 +38,13 @@
     .product-reel-video-section { margin-top: 30px; margin-bottom: 30px; }
     .product-reel-slide { position: relative; width: 100%; max-width: 500px; margin: 0 auto; border-radius: 20px; overflow: hidden; background: #000; box-shadow: 0 8px 20px rgba(0,0,0,0.2); line-height: 0; }
     .product-reel-video-wrapper { position: relative; width: 100%; line-height: 0; }
-    .product-reel-video { width: 100%; height: auto; display: block; cursor: pointer; }
-
-    /* زر التشغيل المباشر */
-    .product-reel-play-btn {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: transparent;
-        border: none;
-        color: #fff;
-        font-size: 5rem;
-        line-height: 1;
-        cursor: pointer;
-        text-shadow: 0 0 12px rgba(0,0,0,0.8);
-        transition: color 0.2s, transform 0.2s;
-        z-index: 10;
-        padding: 0;
-    }
+    .product-reel-video { width: 100%; height: auto; display: block; cursor: pointer; background: #000; }
+    .product-reel-play-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: transparent; border: none; color: #fff; font-size: 5rem; line-height: 1; cursor: pointer; text-shadow: 0 0 12px rgba(0,0,0,0.8); z-index: 10; padding: 0; }
     .product-reel-play-btn:hover { color: #ffd700; transform: translate(-50%, -50%) scale(1.1); }
     .product-reel-play-btn.hidden { display: none; }
-
-    /* أنماط المحتوى */
+    .video-loading-spinner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 4; display: none; width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+    .video-loading-spinner.show { display: block; }
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
     .reel-content { position: absolute; bottom: 0; left: 0; right: 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; padding: 15px; gap: 10px; pointer-events: none; line-height: 1.6; }
     .reel-info-bottom { flex: 1; min-width: 0; pointer-events: auto; }
     .reel-store-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; margin-bottom: 8px; pointer-events: auto; cursor: pointer; }
@@ -83,26 +67,14 @@
         <div class="col-md-6">
             <div class="product-gallery-new">
                 <div class="main-image-container">
-                    {% if product.main_image %}
-                        <img src="{{ product.main_image | get_image_url }}" alt="{{ product.name }}" class="main-product-image" id="mainProductImage">
-                    {% else %}
-                        <div class="main-image-fallback"><i class="bi bi-image"></i></div>
-                    {% endif %}
+                    {% if product.main_image %}<img src="{{ product.main_image | get_image_url }}" alt="{{ product.name }}" class="main-product-image" id="mainProductImage">
+                    {% else %}<div class="main-image-fallback"><i class="bi bi-image"></i></div>{% endif %}
                 </div>
                 {% if product.sub_images %}
                     {% set sub_images = product.sub_images.split(',') %}
                     <div class="thumbnails-row" id="thumbnailsRow">
-                        <div class="thumbnail-item active" data-full="{{ product.main_image | get_image_url }}">
-                            <img src="{{ product.main_image | get_image_url }}" alt="الصورة الأساسية">
-                        </div>
-                        {% for img in sub_images %}
-                            {% set img = img.strip() %}
-                            {% if img %}
-                            <div class="thumbnail-item" data-full="{{ img | get_image_url }}">
-                                <img src="{{ img | get_image_url }}" alt="صورة فرعية">
-                            </div>
-                            {% endif %}
-                        {% endfor %}
+                        <div class="thumbnail-item active" data-full="{{ product.main_image | get_image_url }}"><img src="{{ product.main_image | get_image_url }}" alt="الصورة الأساسية"></div>
+                        {% for img in sub_images %}{% set img = img.strip() %}{% if img %}<div class="thumbnail-item" data-full="{{ img | get_image_url }}"><img src="{{ img | get_image_url }}" alt="صورة فرعية"></div>{% endif %}{% endfor %}
                     </div>
                 {% endif %}
             </div>
@@ -115,8 +87,7 @@
             <div class="mb-3">
                 <span class="badge bg-secondary">{{ product.category.name if product.category else 'غير مصنف' }}</span>
                 <span class="badge bg-info text-dark"><i class="bi bi-eye"></i> {{ product.views }} مشاهدة</span>
-                {% if product.stock_quantity > 0 %}<span class="badge bg-success">متوفر ({{ product.stock_quantity }})</span>
-                {% else %}<span class="badge bg-danger">نفد المخزون</span>{% endif %}
+                {% if product.stock_quantity > 0 %}<span class="badge bg-success">متوفر ({{ product.stock_quantity }})</span>{% else %}<span class="badge bg-danger">نفد المخزون</span>{% endif %}
             </div>
             <p class="product-description">{{ product.description or 'لا يوجد وصف' }}</p>
             {% if product.options %}<div class="product-options mb-3">{{ product.options }}</div>{% endif %}
@@ -127,8 +98,7 @@
             <div class="d-flex align-items-center gap-2 mt-3">
                 {% if product.store %}
                 <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="text-decoration-none d-flex align-items-center gap-2">
-                    {% if product.store.logo_url %}<img src="{{ product.store.logo_url | get_image_url }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover;" alt="{{ product.store.name }}">
-                    {% else %}<div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width:40px;height:40px;"><i class="bi bi-shop"></i></div>{% endif %}
+                    {% if product.store.logo_url %}<img src="{{ product.store.logo_url | get_image_url }}" class="rounded-circle" style="width:40px;height:40px;object-fit:cover;" alt="{{ product.store.name }}">{% else %}<div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white" style="width:40px;height:40px;"><i class="bi bi-shop"></i></div>{% endif %}
                     <span class="fw-bold">{{ product.store.name }}</span>
                 </a>
                 {% endif %}
@@ -142,19 +112,17 @@
         <h5 class="fw-bold mb-3"><i class="bi bi-camera-video"></i> فيديو المنتج</h5>
         <div class="product-reel-slide" id="product-reel-{{ product.id }}">
             <div class="product-reel-video-wrapper">
-                <video class="product-reel-video" loop playsinline preload="metadata"
+                <video class="product-reel-video" loop playsinline preload="auto"
                        src="{{ product.video | get_image_url }}"
                        poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
                        data-product-reel-video></video>
-                <button type="button" class="product-reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
-                    <i class="bi bi-play-fill"></i>
-                </button>
+                <div class="video-loading-spinner" data-video-spinner></div>
+                <button type="button" class="product-reel-play-btn" data-play-btn aria-label="تشغيل الفيديو"><i class="bi bi-play-fill"></i></button>
             </div>
             <div class="reel-content">
                 <div class="reel-info-bottom">
                     <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="reel-store-link">
-                        {% if product.store.logo_url %}<img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ product.store.name }}">
-                        {% else %}<div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>{% endif %}
+                        {% if product.store.logo_url %}<img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ product.store.name }}">{% else %}<div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>{% endif %}
                     </a>
                     <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
                         <h5 class="reel-product-name">{{ product.name }}</h5>
@@ -188,11 +156,7 @@
                 {% for review in product.reviews %}
                 <div class="comment-item">
                     <div class="comment-avatar">{% if review.user and review.user.avatar %}<img src="{{ review.user.avatar | get_image_url }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" alt="{{ review.user.username }}">{% else %}{{ review.user.username[:1] if review.user else 'م' }}{% endif %}</div>
-                    <div class="comment-bubble">
-                        <div class="d-flex justify-content-between"><strong>{{ review.user.username if review.user else 'مستخدم' }}</strong><div class="stars" style="--rating: {{ review.rating }}; font-size:1rem;"></div></div>
-                        <p class="comment-text mb-1">{{ review.comment }}</p>
-                        <span class="comment-meta">{{ review.created_at.strftime('%Y-%m-%d %H:%M') if review.created_at }}</span>
-                    </div>
+                    <div class="comment-bubble"><div class="d-flex justify-content-between"><strong>{{ review.user.username if review.user else 'مستخدم' }}</strong><div class="stars" style="--rating: {{ review.rating }}; font-size:1rem;"></div></div><p class="comment-text mb-1">{{ review.comment }}</p><span class="comment-meta">{{ review.created_at.strftime('%Y-%m-%d %H:%M') if review.created_at }}</span></div>
                 </div>
                 {% else %}<p class="text-muted">لا توجد تقييمات بعد.</p>{% endfor %}
             </div>
@@ -204,72 +168,37 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // معرض الصور
     const mainImg = document.getElementById('mainProductImage');
     const thumbnails = document.querySelectorAll('.thumbnail-item');
-    thumbnails.forEach(item => {
-        item.addEventListener('click', function() {
-            const fullSrc = this.dataset.full;
-            if (mainImg) mainImg.src = fullSrc;
-            thumbnails.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
+    thumbnails.forEach(item => { item.addEventListener('click', function() { const fullSrc = this.dataset.full; if (mainImg) mainImg.src = fullSrc; thumbnails.forEach(t => t.classList.remove('active')); this.classList.add('active'); }); });
 
-    // تقييم النجوم
     const stars = document.querySelectorAll('#starRating .star');
     const ratingInput = document.getElementById('ratingValue');
-    function updateStars(elements, value) {
-        elements.forEach(s => {
-            const v = parseInt(s.dataset.value);
-            const icon = s.querySelector('i');
-            if (v <= value) { if (icon) icon.className = 'bi bi-star-fill text-warning'; s.classList.add('active'); }
-            else { if (icon) icon.className = 'bi bi-star'; s.classList.remove('active'); }
-        });
-    }
+    function updateStars(elements, value) { elements.forEach(s => { const v = parseInt(s.dataset.value); const icon = s.querySelector('i'); if (v <= value) { if (icon) icon.className = 'bi bi-star-fill text-warning'; s.classList.add('active'); } else { if (icon) icon.className = 'bi bi-star'; s.classList.remove('active'); } }); }
     function setRating(value) { if (!isNaN(value) && value >= 1 && value <= 5) { ratingInput.value = value; updateStars(stars, value); } }
-    stars.forEach(star => {
-        star.addEventListener('click', function(e) { setRating(parseInt(this.dataset.value)); });
-        star.addEventListener('mouseenter', function() { updateStars(stars, parseInt(this.dataset.value)); });
-        star.addEventListener('mouseleave', function() { updateStars(stars, parseInt(ratingInput.value) || 0); });
-    });
+    stars.forEach(star => { star.addEventListener('click', function(e) { setRating(parseInt(this.dataset.value)); }); star.addEventListener('mouseenter', function() { updateStars(stars, parseInt(this.dataset.value)); }); star.addEventListener('mouseleave', function() { updateStars(stars, parseInt(ratingInput.value) || 0); }); });
 
-    // التحكم في فيديو المنتج
     const video = document.querySelector('[data-product-reel-video]');
     const playBtn = document.querySelector('[data-play-btn]');
+    const spinner = document.querySelector('[data-video-spinner]');
     if (video && playBtn) {
         function showPlayBtn() { playBtn.classList.remove('hidden'); }
         function hidePlayBtn() { playBtn.classList.add('hidden'); }
-
-        playBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            video.muted = false;
-            video.play().catch(() => {});
-            hidePlayBtn();
-        });
-
-        video.addEventListener('click', function() {
-            if (video.paused) {
-                video.muted = false;
-                video.play().catch(() => {});
-                hidePlayBtn();
-            } else {
-                video.pause();
-                showPlayBtn();
-            }
-        });
-
+        playBtn.addEventListener('click', function(e) { e.stopPropagation(); if (video.readyState < 3 && spinner) spinner.classList.add('show'); video.muted = false; video.play().then(() => { if (spinner) spinner.classList.remove('show'); hidePlayBtn(); }).catch(() => { if (spinner) spinner.classList.remove('show'); }); });
+        video.addEventListener('click', function() { if (video.paused) { if (video.readyState < 3 && spinner) spinner.classList.add('show'); video.muted = false; video.play().then(() => { if (spinner) spinner.classList.remove('show'); hidePlayBtn(); }).catch(() => { if (spinner) spinner.classList.remove('show'); }); } else { video.pause(); showPlayBtn(); } });
         video.addEventListener('pause', showPlayBtn);
         video.addEventListener('play', hidePlayBtn);
+        video.addEventListener('canplaythrough', function() { if (spinner) spinner.classList.remove('show'); });
+        video.addEventListener('waiting', function() { if (spinner) spinner.classList.add('show'); });
+        video.addEventListener('playing', function() { if (spinner) spinner.classList.remove('show'); });
     }
 
-    // حفظ البيانات في IndexedDB
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
         const productData = { id: {{ product.id }}, name: {{ product.name | tojson }}, price: {{ product.price }}, original_price: {{ product.original_price or 'null' }}, is_offer: {{ product.is_offer | lower }}, stock_quantity: {{ product.stock_quantity }}, main_image: {{ product.main_image | tojson if product.main_image else '""' }}, description: {{ product.description | tojson if product.description else '""' }}, store_id: {{ product.store.id if product.store else 'null' }}, store_name: {{ product.store.name | tojson if product.store and product.store.name else '""' }}, store_logo: {{ product.store.logo_url | tojson if product.store and product.store.logo_url else '""' }} };
-        OfflineDB.saveProduct(productData).catch(err => console.warn('OfflineDB saveProduct failed:', err));
+        OfflineDB.saveProduct(productData).catch(err => console.warn(err));
         {% if product.store %}
         const storeData = { id: {{ product.store.id }}, name: {{ product.store.name | tojson }}, description: {{ product.store.description | tojson if product.store.description else '""' }}, logo_url: {{ product.store.logo_url | tojson if product.store.logo_url else '""' }}, phone: {{ product.store.phone | tojson if product.store.phone else '""' }}, address: {{ product.store.address | tojson if product.store.address else '""' }}, working_hours: {{ product.store.working_hours | tojson if product.store.working_hours else '""' }}, subscription_status: {{ product.store.subscription_status | tojson if product.store.subscription_status else '""' }}, is_open: false };
-        OfflineDB.saveStore(storeData).catch(err => console.warn('OfflineDB saveStore failed:', err));
+        OfflineDB.saveStore(storeData).catch(err => console.warn(err));
         {% endif %}
     }
 });
