@@ -26,12 +26,13 @@
         width: 100%;
         border-radius: 20px;
         overflow: hidden;
-        background: #000;
+        background: transparent;
         box-shadow: 0 8px 20px rgba(0,0,0,0.2);
     }
     .reel-video-wrapper {
         position: relative;
         width: 100%;
+        line-height: 0;
     }
     .reel-video {
         width: 100%;
@@ -39,39 +40,15 @@
         display: block;
         cursor: pointer;
     }
-    .reel-video-wrapper {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-    }
-    .reel-video {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        background: #000;
-        display: block;
-        cursor: pointer;
-    }
     .reel-video-placeholder {
         width: 100%;
-        height: 100%;
+        aspect-ratio: 16 / 9;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 4rem;
         color: #fff;
         background: #333;
-    }
-    .reel-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 50%;
-        background: linear-gradient(transparent, rgba(0,0,0,0.8));
-        pointer-events: none;
-        z-index: 1;
     }
     .reel-content {
         position: absolute;
@@ -84,10 +61,12 @@
         align-items: flex-end;
         padding: 15px;
         gap: 10px;
+        pointer-events: none;
     }
     .reel-info-bottom {
         flex: 1;
         min-width: 0;
+        pointer-events: auto;
     }
     .reel-store-link {
         display: flex;
@@ -139,6 +118,7 @@
         flex-direction: column;
         gap: 12px;
         align-items: center;
+        pointer-events: auto;
     }
     .reel-action-btn {
         background: rgba(255,255,255,0.2);
@@ -207,8 +187,6 @@
                 </div>
                 {% endif %}
             </div>
-
-            <div class="reel-overlay"></div>
 
             <div class="reel-content">
                 <div class="reel-info-bottom">
