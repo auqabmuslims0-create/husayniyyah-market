@@ -122,8 +122,8 @@ def safe_referrer():
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi'}
-MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
-MAX_VIDEO_SIZE = 50 * 1024 * 1024  # 50MB
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100MB
 
 def _secure_file(file, allowed_extensions, max_size):
     """فحص الملف من حيث الامتداد والحجم و MIME type."""
@@ -165,7 +165,7 @@ def save_image(file):
         return None
 
 def save_video(file):
-    """رفع فيديو إلى Cloudinary وإرجاع الرابط السحابي."""
+    """رفع فيديو إلى Cloudinary مع دعم الرفع المجزأ لمنع الفشل مع الملفات الكبيرة."""
     ext = _secure_file(file, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_SIZE)
     if not ext:
         return None
@@ -174,7 +174,9 @@ def save_video(file):
         upload_result = cloudinary.uploader.upload(
             file,
             folder="husayniyyah_market/videos",
-            resource_type="video"
+            resource_type="video",
+            chunk_size=6000000,  # 6MB per chunk
+            timeout=120
         )
         return upload_result.get('secure_url')
     except Exception as e:
