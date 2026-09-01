@@ -128,18 +128,42 @@
       50% { transform: scale(1.1); }
       100% { transform: scale(1); }
     }
+
+    /* إصلاح طبقات العرض بشكل نهائي */
+    input, textarea, select, [contenteditable="true"] {
+      position: relative;
+      z-index: 1;
+    }
+    .modal {
+      z-index: 3000 !important;
+      pointer-events: auto !important;
+    }
+    .modal-backdrop {
+      z-index: 2990 !important;
+    }
+    .modal-dialog {
+      z-index: 3001 !important;
+      pointer-events: auto !important;
+    }
+    .modal-content {
+      pointer-events: auto !important;
+    }
+    .offcanvas {
+      z-index: 1045 !important;
+    }
+    .toast-container-top {
+      z-index: 2000 !important;
+    }
   </style>
   {% block head %}{% endblock %}
 </head>
 <body class="{% if show_bottom_nav %}with-bottom-nav{% else %}no-bottom-nav{% endif %}">
 
-  <!-- شاشة Splash (مخفية افتراضياً) -->
   <div id="appSplash" style="display: none;">
     <img src="{{ url_for('static', filename='icons/icon-512.png') }}" alt="سوق الحسينية">
     <h1>سوق الحسينية</h1>
   </div>
 
-  <!-- مؤشر انقطاع الاتصال -->
   <div id="connectionIndicator" class="connection-indicator" role="alert">
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" fill="currentColor"/>
@@ -215,7 +239,6 @@
     {% block content %}{% endblock %}
   </main>
 
-  <!-- حاوية التوست العلوية -->
   <div class="toast-container-top" id="toastContainerTop">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -252,48 +275,6 @@
     <a href="{{ url_for('stores.stores_page') }}" class="bottom-nav-item {% if request.endpoint == 'stores.stores_page' %}active{% endif %}"><i class="bi bi-shop-window"></i><span>المتاجر</span></a>
   </nav>
   {% endif %}
-
-  <style>
-    @media (display-mode: standalone) {
-      body {
-        padding-top: calc(64px + env(safe-area-inset-top));
-        padding-bottom: calc(100px + env(safe-area-inset-bottom));
-      }
-      .bottom-nav {
-        padding-bottom: env(safe-area-inset-bottom);
-      }
-    }
-    /* إصلاح طبقات العرض: الحقول لا تغطي القوائم */
-    input, textarea, select, [contenteditable="true"] {
-      position: relative;
-      z-index: 1;
-    }
-    .modal, .offcanvas, .toast-container-top {
-      z-index: 1050;
-    }
-/* إصلاح طبقات العرض: الحقول لا تغطي القوائم */
-input, textarea, select, [contenteditable="true"] {
-  position: relative;
-  z-index: 1;
-}
-.modal {
-  z-index: 2000 !important;
-  pointer-events: auto !important;
-}
-.modal-backdrop {
-  z-index: 1990 !important;
-}
-.modal-dialog {
-  z-index: 2001 !important;
-  pointer-events: auto !important;
-}
-.modal-content {
-  pointer-events: auto !important;
-}
-.offcanvas, .toast-container-top {
-  z-index: 1050;
-}
-  </style>
 
   <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
   <script src="{{ url_for('static', filename='js/offlineDB.js') }}"></script>
@@ -474,7 +455,6 @@ input, textarea, select, [contenteditable="true"] {
       });
     }
 
-    // جلب التحديثات الفورية
     function fetchUpdates() {
       fetch('/api/updates', {headers: {'Accept': 'application/json'}})
       .then(res => res.json())
@@ -508,7 +488,6 @@ input, textarea, select, [contenteditable="true"] {
     fetchUpdates();
   </script>
 
-  <!-- تسجيل Service Worker و Push -->
   <script>
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       window.addEventListener('load', async () => {
@@ -552,40 +531,43 @@ input, textarea, select, [contenteditable="true"] {
       return outputArray;
     }
   </script>
-<!-- مودال تأكيد موحد -->
-<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmModalTitle">تأكيد</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-            </div>
-            <div class="modal-body">
-                <p id="confirmModalMessage">هل أنت متأكد؟</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-danger" id="confirmModalBtn">تأكيد</button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<script>
-function showConfirmModal(message, callback) {
-    const modalEl = document.getElementById('confirmModal');
-    if (!modalEl) return;
-    document.getElementById('confirmModalMessage').textContent = message;
-    const btn = document.getElementById('confirmModalBtn');
-    btn.onclick = function() {
-    if (typeof callback === 'function') {
-        callback();
+  <!-- مودال تأكيد موحد -->
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalTitle">تأكيد</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmModalMessage">هل أنت متأكد؟</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="button" class="btn btn-danger" id="confirmModalBtn">تأكيد</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showConfirmModal(message, formId) {
+      const modalEl = document.getElementById('confirmModal');
+      if (!modalEl) return;
+      document.getElementById('confirmModalMessage').textContent = message;
+      const btn = document.getElementById('confirmModalBtn');
+      btn.onclick = function() {
+        const form = document.getElementById(formId);
+        if (form) {
+          form.submit();
+        }
+        bootstrap.Modal.getInstance(modalEl).hide();
+      };
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
     }
-    bootstrap.Modal.getInstance(modalEl).hide();
-    };
-    bootstrap.Modal.getOrCreateInstance(modalEl).show();
-}
-</script>
+  </script>
+
   {% block scripts %}{% endblock %}
 </body>
 </html>
