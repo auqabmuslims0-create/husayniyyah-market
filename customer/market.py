@@ -10,7 +10,19 @@ market_bp = Blueprint('market', __name__)
 def home():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    return redirect(url_for('market.market'))
+    user = db.session.get(models.User, session['user_id'])
+    if not user:
+        session.clear()
+        return redirect(url_for('auth.login'))
+    # التوجيه حسب الدور
+    if user.role == 'admin':
+        return redirect(url_for('admin.admin_dashboard'))
+    elif user.role == 'owner':
+        return redirect(url_for('store.my_stores'))
+    elif user.role == 'delivery':
+        return redirect(url_for('delivery.delivery_dashboard'))
+    else:
+        return redirect(url_for('market.market'))
 
 @market_bp.route('/market')
 def market():
@@ -44,7 +56,7 @@ def market():
         .order_by(models.Product.created_at.desc()) \
         .paginate(page=page, per_page=per_page, error_out=False)
 
-    # المتاجر المفتوحة الآن (لعرض الشريط العلوي)
+    # المتاجر المفتوحة الآن
     stores = models.Store.query.filter(models.Store.subscription_status == 'active').limit(50).all()
     open_stores = [s for s in stores if is_store_open(s)]
 
