@@ -70,13 +70,16 @@
         min-width: 0;
         pointer-events: auto;
     }
+    /* رابط المتجر فقط على الصورة الرمزية */
     .reel-store-link {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
         text-decoration: none;
         color: #fff;
         margin-bottom: 8px;
+        pointer-events: auto;
+        cursor: pointer;
     }
     .reel-store-avatar,
     .reel-store-avatar-placeholder {
@@ -92,16 +95,21 @@
         color: #fff;
         font-size: 1.2rem;
         flex-shrink: 0;
+        pointer-events: auto;
     }
     .reel-store-name {
         font-weight: 600;
         font-size: 0.9rem;
         text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        pointer-events: none; /* لا يوجه عند الضغط على الاسم */
     }
+    /* رابط المنتج */
     .reel-product-link {
         text-decoration: none;
         color: #fff;
         display: block;
+        pointer-events: auto;
+        cursor: pointer;
     }
     .reel-product-name {
         margin: 0;
@@ -151,7 +159,7 @@
         pointer-events: none;
     }
 
-    /* زر التشغيل المركزي */
+    /* زر التشغيل: مثلث فقط بدون دائرة */
     .reel-play-overlay {
         position: absolute;
         inset: 0;
@@ -163,24 +171,20 @@
         transition: opacity 0.3s ease;
     }
     .reel-play-btn {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
-        background: rgba(0,0,0,0.6);
-        border: 2px solid #fff;
+        background: transparent;
+        border: none;
         color: #fff;
-        font-size: 2rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        font-size: 5rem;
+        line-height: 1;
         cursor: pointer;
         pointer-events: auto;
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-        transition: background 0.2s, transform 0.2s;
+        text-shadow: 0 0 12px rgba(0,0,0,0.8);
+        transition: color 0.2s, text-shadow 0.2s, transform 0.2s;
+        padding: 0;
     }
     .reel-play-btn:hover {
-        background: rgba(0,0,0,0.8);
+        color: #ffd700;
+        text-shadow: 0 0 20px rgba(0,0,0,0.9);
         transform: scale(1.1);
     }
     .reel-play-overlay.hidden {
@@ -201,9 +205,7 @@
             font-size: 0.9rem;
         }
         .reel-play-btn {
-            width: 60px;
-            height: 60px;
-            font-size: 1.6rem;
+            font-size: 4rem;
         }
     }
 </style>
@@ -222,12 +224,11 @@
         <div class="reel-slide" id="reel-{{ product.id }}">
             <div class="reel-video-wrapper">
                 {% if product.video %}
-                <video class="reel-video" loop muted playsinline preload="metadata"
+                <video class="reel-video" loop playsinline preload="metadata"
                        src="{{ product.video | get_image_url }}"
                        poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
                        data-reel-video>
                 </video>
-                <!-- زر تشغيل مركزي -->
                 <div class="reel-play-overlay" data-play-overlay>
                     <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
                         <i class="bi bi-play-fill"></i>
@@ -242,14 +243,15 @@
 
             <div class="reel-content">
                 <div class="reel-info-bottom">
+                    <!-- رابط المتجر: الصورة فقط -->
                     <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="reel-store-link">
                         {% if product.store.logo_url %}
                             <img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ product.store.name }}">
                         {% else %}
                             <div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>
                         {% endif %}
-                        <span class="reel-store-name">{{ product.store.name }}</span>
                     </a>
+                    <!-- رابط المنتج: الاسم والسعر -->
                     <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
                         <h5 class="reel-product-name">{{ product.name }}</h5>
                         <div class="reel-product-price">
@@ -292,10 +294,8 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const videos = document.querySelectorAll('[data-reel-video]');
-    const playOverlays = document.querySelectorAll('[data-play-overlay]');
-    const playBtns = document.querySelectorAll('[data-play-btn]');
 
-    // إيقاف جميع الفيديوهات
+    // إيقاف جميع الفيديوهات وإظهار أزرار التشغيل
     function pauseAllVideos() {
         videos.forEach(video => {
             video.pause();
@@ -304,16 +304,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // تشغيل فيديو معين وإيقاف الباقي
+    // تشغيل فيديو معين مع الصوت وإيقاف الباقي
     function playVideo(video) {
         pauseAllVideos();
+        video.muted = false; // تفعيل الصوت عند التشغيل
         video.play().catch(() => {});
         const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
         if (overlay) overlay.classList.add('hidden');
     }
 
     // زر التشغيل المركزي
-    playBtns.forEach(btn => {
+    document.querySelectorAll('[data-play-btn]').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
             const video = this.closest('.reel-slide').querySelector('[data-reel-video]');

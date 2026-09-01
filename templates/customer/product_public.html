@@ -205,28 +205,126 @@
         transition: opacity 0.3s ease;
     }
     .product-reel-play-btn {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
-        background: rgba(0,0,0,0.6);
-        border: 2px solid #fff;
+        background: transparent;
+        border: none;
         color: #fff;
-        font-size: 2rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        font-size: 5rem;
+        line-height: 1;
         cursor: pointer;
         pointer-events: auto;
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
-        transition: background 0.2s, transform 0.2s;
+        text-shadow: 0 0 12px rgba(0,0,0,0.8);
+        transition: color 0.2s, text-shadow 0.2s, transform 0.2s;
+        padding: 0;
     }
     .product-reel-play-btn:hover {
-        background: rgba(0,0,0,0.8);
+        color: #ffd700;
+        text-shadow: 0 0 20px rgba(0,0,0,0.9);
         transform: scale(1.1);
     }
     .product-reel-play-overlay.hidden {
         opacity: 0;
+        pointer-events: none;
+    }
+    /* أنماط مشتركة لعناصر الفيديو */
+    .reel-content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 15px;
+        gap: 10px;
+        pointer-events: none;
+        line-height: 1.6;
+    }
+    .reel-info-bottom {
+        flex: 1;
+        min-width: 0;
+        pointer-events: auto;
+    }
+    .reel-store-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        color: #fff;
+        margin-bottom: 8px;
+        pointer-events: auto;
+        cursor: pointer;
+    }
+    .reel-store-avatar,
+    .reel-store-avatar-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #fff;
+        background: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+        pointer-events: auto;
+    }
+    .reel-store-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        pointer-events: none;
+    }
+    .reel-product-link {
+        text-decoration: none;
+        color: #fff;
+        display: block;
+        pointer-events: auto;
+        cursor: pointer;
+    }
+    .reel-product-name {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .reel-product-price {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #ffd700;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .reel-actions-column {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+        pointer-events: auto;
+    }
+    .reel-action-btn {
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: #fff;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.2s;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+    }
+    .reel-action-btn:hover {
+        background: rgba(255,255,255,0.35);
+        transform: scale(1.05);
+    }
+    .reel-action-btn:disabled {
+        opacity: 0.5;
         pointer-events: none;
     }
 </style>
@@ -319,7 +417,7 @@
         <h5 class="fw-bold mb-3"><i class="bi bi-camera-video"></i> فيديو المنتج</h5>
         <div class="product-reel-slide" id="product-reel-{{ product.id }}">
             <div class="product-reel-video-wrapper">
-                <video class="product-reel-video" loop muted playsinline preload="metadata"
+                <video class="product-reel-video" loop playsinline preload="metadata"
                        src="{{ product.video | get_image_url }}"
                        poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
                        data-product-reel-video>
@@ -330,19 +428,20 @@
                     </button>
                 </div>
             </div>
-            <div class="reel-content" style="position: absolute; bottom: 0; left: 0; right: 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; padding: 15px; gap: 10px; pointer-events: none; line-height: 1.6;">
-                <div class="reel-info-bottom" style="flex: 1; min-width: 0; pointer-events: auto;">
-                    <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="reel-store-link" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; margin-bottom: 8px;">
+            <div class="reel-content">
+                <div class="reel-info-bottom">
+                    <!-- رابط المتجر: الصورة فقط -->
+                    <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="reel-store-link">
                         {% if product.store.logo_url %}
-                            <img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #fff;" alt="{{ product.store.name }}">
+                            <img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ product.store.name }}">
                         {% else %}
-                            <div class="reel-store-avatar-placeholder" style="width: 40px; height: 40px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem;"><i class="bi bi-shop"></i></div>
+                            <div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>
                         {% endif %}
-                        <span class="reel-store-name" style="font-weight: 600; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">{{ product.store.name }}</span>
                     </a>
-                    <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link" style="text-decoration: none; color: #fff; display: block;">
-                        <h5 class="reel-product-name" style="margin: 0; font-size: 1.1rem; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">{{ product.name }}</h5>
-                        <div class="reel-product-price" style="font-size: 1rem; font-weight: 600; color: #ffd700; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">
+                    <!-- رابط المنتج: الاسم والسعر -->
+                    <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
+                        <h5 class="reel-product-name">{{ product.name }}</h5>
+                        <div class="reel-product-price">
                             {{ product.price|format_price }} ل.س
                             {% if product.is_offer and product.original_price %}
                                 <span class="text-decoration-line-through text-muted ms-1">{{ product.original_price|format_price }}</span>
@@ -350,7 +449,7 @@
                         </div>
                     </a>
                 </div>
-                <div class="reel-actions-column" style="display: flex; flex-direction: column; gap: 12px; align-items: center; pointer-events: auto;">
+                <div class="reel-actions-column">
                     <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')" title="مشاركة">
                         <i class="bi bi-share"></i>
                     </button>
@@ -389,7 +488,6 @@
             </form>
             {% endif %}
 
-            <!-- قائمة التقييمات -->
             <div id="reviewsSection">
                 {% for review in product.reviews %}
                 <div class="comment-item">
@@ -484,6 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const playBtn = slide.querySelector('[data-play-btn]');
 
         function playVideo() {
+            productVideo.muted = false; // تفعيل الصوت
             productVideo.play().catch(() => {});
             if (overlay) overlay.classList.add('hidden');
         }
