@@ -288,7 +288,8 @@
                     <span class="fw-bold">{{ group.store.name if group.store else 'متجر محذوف' }}</span>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearLocalStoreCart({{ store_id }})">مسح الكل</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                            onclick="clearLocalStoreCart({{ store_id }}, {{ group.cart_items|map(attribute='product.id')|list|tojson }})">مسح الكل</button>
                     <a href="{{ url_for('cart.checkout', store_id=store_id) }}" class="btn btn-sm btn-custom">إتمام الطلب</a>
                 </div>
             </div>
@@ -439,11 +440,12 @@ document.addEventListener('DOMContentLoaded', function() {
         LocalStore.updateCartBadges();
         location.reload();
     };
-    window.clearLocalStoreCart = function(storeId) {
+    // تعديل: حذف منتجات متجر محدد فقط
+    window.clearLocalStoreCart = function(storeId, productIds) {
         const cart = LocalStore.getCart();
-        for (let pid in cart) {
-            delete cart[pid];
-        }
+        productIds.forEach(pid => {
+            delete cart[String(pid)];
+        });
         LocalStore.setCart(cart);
         LocalStore.updateCartBadges();
         location.reload();

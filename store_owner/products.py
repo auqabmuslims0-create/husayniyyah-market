@@ -3,7 +3,7 @@ from database import db
 import models
 import os
 from sqlalchemy.orm import joinedload
-from utils import is_store_active, save_image, save_video, get_upload_path
+from utils import is_store_active, save_image, save_video, get_upload_path, delete_cloudinary_file
 from decorators import role_required
 from . import store_bp
 from .common import check_store_access
@@ -78,7 +78,7 @@ def new_product(store_id):
                 flash('التصنيف غير صالح')
                 return redirect(url_for('store.new_product', store_id=store.id))
 
-        # حفظ الصورة الأساسية
+        # حفظ الصورة الأساسية (لا يوجد قديم لأن المنتج جديد)
         main_image = None
         main_file = request.files.get('main_image')
         if main_file and main_file.filename != '':
@@ -188,28 +188,20 @@ def edit_product(store_id, product_id):
         # الصورة الأساسية
         main_file = request.files.get('main_image')
         if main_file and main_file.filename != '':
-            new_main = save_image(main_file)
+            old_url = product.main_image
+            new_main = save_image(main_file, old_url=old_url)
             if new_main:
-                # حذف القديمة إذا وُجدت
-                if product.main_image:
-                    old_path = get_upload_path(product.main_image)
-                    if old_path and os.path.exists(old_path):
-                        try:
-                            os.remove(old_path)
-                        except Exception:
-                            pass
                 product.main_image = new_main
+            else:
+                flash('فشل رفع الصورة الأساسية', 'error')
+                return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
 
         # حذف الصورة الأساسية إذا طُلب
         if request.form.get('remove_main_image') == 'yes':
             if product.main_image:
-                old_path = get_upload_path(product.main_image)
-                if old_path and os.path.exists(old_path):
-                    try:
-                        os.remove(old_path)
-                    except Exception:
-                        pass
-            product.main_image = None
+                # حذف من Cloudinary
+                delete_cloudinary_file(product.main_image)
+                product.main_image = None
 
         # الصور الفرعية: نبدأ من القائمة الحالية (إن وُجدت)
         existing_sub = []
@@ -221,13 +213,8 @@ def edit_product(store_id, product_id):
         for img in remove_sub_images:
             if img in existing_sub:
                 existing_sub.remove(img)
-                # حذف الملف من القرص
-                img_path = get_upload_path(img)
-                if img_path and os.path.exists(img_path):
-                    try:
-                        os.remove(img_path)
-                    except Exception:
-                        pass
+                # حذف من Cloudinary
+                delete_cloudinary_file(img)
 
         # إضافة صور فرعية جديدة (حتى 4 - الحالي)
         uploaded_files = request.files.getlist('sub_images')
@@ -244,26 +231,18 @@ def edit_product(store_id, product_id):
         # الفيديو
         if request.form.get('remove_video') == 'yes':
             if product.video:
-                old_video = get_upload_path(product.video)
-                if old_video and os.path.exists(old_video):
-                    try:
-                        os.remove(old_video)
-                    except Exception:
-                        pass
-            product.video = None
+                delete_cloudinary_file(product.video)
+                product.video = None
         else:
-             video_file = request.files.get('video')
-             if video_file and video_file.filename != '':
-                 new_video = save_video(video_file)
-                 if new_video:
-                     if product.video:
-                         old_video = get_upload_path(product.video)
-                         if old_video and os.path.exists(old_video):
-                             try:
-                                 os.remove(old_video)
-                             except Exception:
-                                 pass
-                     product.video = new_video
+            video_file = request.files.get('video')
+            if video_file and video_file.filename != '':
+                old_url = product.video
+                new_video = save_video(video_file, old_url=old_url)
+                if new_video:
+                    product.video = new_video
+                else:
+                    flash('فشل رفع الفيديو', 'error')
+                    return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
 
         product.name = name
         product.product_code = product_code
@@ -309,31 +288,16 @@ def delete_product(store_id, product_id):
     if product.store_id != store.id:
         abort(403)
 
-    # حذف الصور والفيديو من القرص
+    # حذف الملفات من Cloudinary
     if product.main_image:
-        file_path = get_upload_path(product.main_image)
-        if file_path and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except Exception:
-                pass
+        delete_cloudinary_file(product.main_image)
     if product.sub_images:
         for img in product.sub_images.split(','):
             img = img.strip()
             if img:
-                file_path = get_upload_path(img)
-                if file_path and os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                    except Exception:
-                        pass
+                delete_cloudinary_file(img)
     if product.video:
-        video_path = get_upload_path(product.video)
-        if video_path and os.path.exists(video_path):
-            try:
-                os.remove(video_path)
-            except Exception:
-                pass
+        delete_cloudinary_file(product.video)
 
     db.session.delete(product)
     db.session.commit()

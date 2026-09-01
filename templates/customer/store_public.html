@@ -43,7 +43,6 @@
     .store-cover-img {
         display: block;
     }
-    /* صورة المالك دائرية */
     .owner-avatar-circle {
         width: 80px;
         height: 80px;
@@ -64,7 +63,6 @@
     .store-cover img {
         border-radius: 20px 20px 0 0;
     }
-    /* شريط المنتجات المميزة */
     .featured-products-strip {
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
@@ -89,7 +87,6 @@
         transform: translateY(-4px);
         box-shadow: var(--shadow-md);
     }
-    /* شبكة المنتجات */
     .products-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -107,22 +104,166 @@
         object-fit: cover;
         display: block;
     }
-    /* فيديوهات */
-    .video-card {
-        border-radius: var(--radius-md);
-        overflow: hidden;
+    /* أنماط قسم الفيديوهات بأسلوب الريلز */
+    .reels-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 15px;
     }
-    .video-card video {
+    .reel-slide {
+        position: relative;
         width: 100%;
-        height: 180px;
-        object-fit: cover;
+        border-radius: 20px;
+        overflow: hidden;
         background: #000;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        line-height: 0;
+    }
+    .reel-video-wrapper {
+        position: relative;
+        width: 100%;
+        line-height: 0;
+    }
+    .reel-video {
+        width: 100%;
+        height: auto;
+        display: block;
+        cursor: pointer;
+    }
+    .reel-content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 15px;
+        gap: 10px;
+        pointer-events: none;
+        line-height: 1.6;
+    }
+    .reel-info-bottom {
+        flex: 1;
+        min-width: 0;
+        pointer-events: auto;
+    }
+    .reel-store-link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+    .reel-store-avatar,
+    .reel-store-avatar-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #fff;
+        background: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .reel-store-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .reel-product-link {
+        text-decoration: none;
+        color: #fff;
         display: block;
     }
-    body.dark-mode .video-card {
-        background: #1e1e1e;
+    .reel-product-name {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
     }
-    /* الخريطة */
+    .reel-product-price {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #ffd700;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .reel-actions-column {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+        pointer-events: auto;
+    }
+    .reel-action-btn {
+        background: rgba(255,255,255,0.2);
+        border: none;
+        color: #fff;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.2s;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+    }
+    .reel-action-btn:hover {
+        background: rgba(255,255,255,0.35);
+        transform: scale(1.05);
+    }
+    .reel-action-btn.active {
+        background: #dc3545;
+        color: #fff;
+    }
+    .reel-action-btn:disabled {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    .reel-play-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 3;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .reel-play-btn {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.6);
+        border: 2px solid #fff;
+        color: #fff;
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        pointer-events: auto;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        transition: background 0.2s, transform 0.2s;
+    }
+    .reel-play-btn:hover {
+        background: rgba(0,0,0,0.8);
+        transform: scale(1.1);
+    }
+    .reel-play-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
     .store-map-mini {
         height: 200px;
         border-radius: 12px;
@@ -300,23 +441,51 @@
                 {% endif %}
             </div>
 
-            <!-- الفيديوهات -->
+            <!-- الفيديوهات بأسلوب الريلز -->
             <div class="tab-pane fade" id="videos-tab" role="tabpanel" aria-labelledby="videos-tab-btn">
                 {% if store_videos %}
-                    <div class="row g-3">
+                    <div class="reels-grid">
                         {% for product in store_videos %}
-                            <div class="col-6 col-md-4 col-lg-3">
-                                <div class="card h-100 video-card">
-                                    <video controls>
-                                        <source src="{{ product.video | get_image_url }}" type="video/mp4">
-                                        متصفحك لا يدعم الفيديو.
-                                    </video>
-                                    <div class="card-body p-2">
-                                        <h6 class="card-title mb-1 text-truncate">{{ product.name }}</h6>
-                                        <p class="text-muted small mb-0">{{ product.price|format_price }} ل.س</p>
-                                    </div>
+                        <div class="reel-slide" id="store-reel-{{ product.id }}">
+                            <div class="reel-video-wrapper">
+                                <video class="reel-video" loop muted playsinline preload="metadata"
+                                       src="{{ product.video | get_image_url }}"
+                                       poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
+                                       data-store-reel-video>
+                                </video>
+                                <div class="reel-play-overlay" data-play-overlay>
+                                    <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
                                 </div>
                             </div>
+
+                            <div class="reel-content">
+                                <div class="reel-info-bottom">
+                                    <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
+                                        <h5 class="reel-product-name">{{ product.name }}</h5>
+                                        <div class="reel-product-price">
+                                            {{ product.price|format_price }} ل.س
+                                            {% if product.is_offer and product.original_price %}
+                                                <span class="text-decoration-line-through text-muted ms-1">{{ product.original_price|format_price }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </a>
+                                </div>
+                                <div class="reel-actions-column">
+                                    <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')"
+                                            title="مشاركة">
+                                        <i class="bi bi-share"></i>
+                                    </button>
+                                    <button class="reel-action-btn {% if product.stock_quantity == 0 %}disabled{% endif %}"
+                                            onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة للسلة', 'success'))"
+                                            title="أضف إلى السلة"
+                                            {% if product.stock_quantity == 0 %}disabled{% endif %}>
+                                        <i class="bi bi-cart-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                         {% endfor %}
                     </div>
                 {% else %}
@@ -423,10 +592,56 @@ function copyStoreLink() {
     }
 }
 
+// التحكم في فيديوهات المتجر بأسلوب الريلز
+document.addEventListener('DOMContentLoaded', function() {
+    const storeVideos = document.querySelectorAll('[data-store-reel-video]');
+
+    function pauseAllStoreVideos() {
+        storeVideos.forEach(video => {
+            video.pause();
+            const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
+            if (overlay) overlay.classList.remove('hidden');
+        });
+    }
+
+    function playStoreVideo(video) {
+        pauseAllStoreVideos();
+        video.play().catch(() => {});
+        const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
+        if (overlay) overlay.classList.add('hidden');
+    }
+
+    // أزرار التشغيل
+    document.querySelectorAll('#videos-tab [data-play-btn]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const video = this.closest('.reel-slide').querySelector('[data-store-reel-video]');
+            if (video) playStoreVideo(video);
+        });
+    });
+
+    // النقر على الفيديو
+    storeVideos.forEach(video => {
+        video.addEventListener('click', function() {
+            if (video.paused) {
+                playStoreVideo(video);
+            } else {
+                video.pause();
+                const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
+                if (overlay) overlay.classList.remove('hidden');
+            }
+        });
+    });
+
+    // عند مغادرة التبويب، أوقف الفيديوهات
+    document.getElementById('videos-tab-btn').addEventListener('hidden.bs.tab', function() {
+        pauseAllStoreVideos();
+    });
+});
+
 // حفظ المتجر والمنتجات في IndexedDB
 document.addEventListener('DOMContentLoaded', function() {
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
-        // حفظ بيانات المتجر
         const storeData = {
             id: {{ store.id }},
             name: {{ store.name | tojson }},
@@ -440,7 +655,6 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         OfflineDB.saveStore(storeData).catch(err => console.warn('OfflineDB saveStore failed:', err));
 
-        // حفظ المنتجات (المنتجات المعروضة في التبويب)
         const productsData = [
             {% for product in products %}
             {
@@ -462,7 +676,6 @@ document.addEventListener('DOMContentLoaded', function() {
             OfflineDB.saveProducts(productsData).catch(err => console.warn('OfflineDB saveProducts failed:', err));
         }
 
-        // حفظ المنتجات المميزة أيضًا
         const featuredData = [
             {% for product in featured_products %}
             {

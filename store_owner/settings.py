@@ -6,7 +6,7 @@ import models
 import os
 from datetime import timedelta
 from time_utils import current_time
-from utils import save_image, get_upload_path
+from utils import save_image, get_upload_path, delete_cloudinary_file
 from decorators import role_required
 from . import store_bp
 from .common import check_store_access
@@ -43,16 +43,13 @@ def edit_store(store_id):
 
         logo_file = request.files.get('logo')
         if logo_file and logo_file.filename != '':
-            new_logo = save_image(logo_file)
+            old_logo_url = store.logo_url
+            new_logo = save_image(logo_file, old_url=old_logo_url)
             if new_logo:
-                if store.logo_url:
-                    old_logo = get_upload_path(store.logo_url)
-                    if os.path.exists(old_logo):
-                        try:
-                            os.remove(old_logo)
-                        except Exception:
-                            pass
                 store.logo_url = new_logo
+            else:
+                flash('فشل رفع الشعار', 'error')
+                return redirect(url_for('store.edit_store', store_id=store.id))
 
         store.has_delivery = has_delivery
         db.session.commit()

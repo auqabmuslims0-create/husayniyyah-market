@@ -1,6 +1,7 @@
 import sys
 import os
 import secrets
+import time  # أُضيف لاستخدامه في التخزين المؤقت
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'shared'))
@@ -107,16 +108,14 @@ if database_url and database_url.startswith('postgres://'):
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'husayniyyah.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 100MB
+app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024  # 15MB
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 db.init_app(app)
 migrate = Migrate(app, db)
 
-# إنشاء الجداول تلقائياً إذا لم تكن موجودة (مناسب للإنتاج البسيط)
-with app.app_context():
-    db.create_all()
+# تم إزالة db.create_all() من هنا؛ سيتم استخدام ترحيلات Flask-Migrate في الإنتاج
 
 # تسجيل Blueprints
 app.register_blueprint(auth_bp)
@@ -141,7 +140,6 @@ def create_admin_command():
     ensure_admin()
 
 def ensure_admin():
-    # لا تقم بإنشاء مدير إلا إذا توفرت متغيرات البيئة المناسبة
     admin_username = os.environ.get('ADMIN_USERNAME')
     admin_email = os.environ.get('ADMIN_EMAIL')
     admin_phone = os.environ.get('ADMIN_PHONE')
@@ -170,7 +168,6 @@ def ensure_admin():
 
 @app.before_request
 def before_request_checks():
-    # فحوصات CSRF
     if not request.path.startswith('/api/'):
         if '_csrf_token' not in session:
             session['_csrf_token'] = secrets.token_hex(16)
@@ -180,12 +177,10 @@ def before_request_checks():
             if not token or not request_token or token != request_token:
                 abort(400, description='CSRF token مفقود أو غير صالح')
 
-    # تحميل المستخدم الحالي إلى g
     g.user = None
     if 'user_id' in session:
         g.user = db.session.get(models.User, session['user_id'])
 
-    # التحقق من تسجيل الدخول
     if request.path.startswith('/api/') or request.endpoint is None:
         return
 
@@ -205,20 +200,41 @@ def before_request_checks():
             flash('يجب تسجيل الدخول أولاً')
             return redirect(url_for('auth.login'))
 
+# ===== تخزين مؤقت بسيط لعدادات الإشعارات والعروض =====
+_notifications_cache = {}
+_offers_cache = {}
+
+CACHE_TIMEOUT = 30  # ثانية
+
 @app.context_processor
 def inject_notifications_count():
     if request.path.startswith('/api/') or request.path.startswith('/static/'):
         return dict(unread_notifications=0)
     if g.user is None:
         return dict(unread_notifications=0)
-    unread_count = models.Notification.query.filter_by(user_id=g.user.id, is_read=False).count()
+
+    user_id = g.user.id
+    current_time = time.time()
+    cached = _notifications_cache.get(user_id)
+    if cached and (current_time - cached['timestamp'] < CACHE_TIMEOUT):
+        return dict(unread_notifications=cached['count'])
+
+    unread_count = models.Notification.query.filter_by(user_id=user_id, is_read=False).count()
+    _notifications_cache[user_id] = {'count': unread_count, 'timestamp': current_time}
     return dict(unread_notifications=unread_count)
 
 @app.context_processor
 def inject_offers_count():
     if request.endpoint not in ['market.market', 'offers.offers_page', 'stores.stores_page']:
         return dict(offers_count=0)
+
+    current_time = time.time()
+    cached = _offers_cache.get('global')
+    if cached and (current_time - cached['timestamp'] < CACHE_TIMEOUT):
+        return dict(offers_count=cached['count'])
+
     offer_count = models.Product.query.filter_by(is_offer=True).count()
+    _offers_cache['global'] = {'count': offer_count, 'timestamp': current_time}
     return dict(offers_count=offer_count)
 
 @app.context_processor

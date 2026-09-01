@@ -6,7 +6,7 @@ from database import db
 import models
 from utils import get_setting, set_setting
 
-VAPID_SUBJECT = "mailto:admin@example.com"  # يمكن تغييرها لاحقًا
+DEFAULT_VAPID_SUBJECT = "mailto:admin@example.com"
 
 def get_or_create_vapid_keys():
     """جلب أو إنشاء مفاتيح VAPID وحفظها في الإعدادات."""
@@ -15,7 +15,6 @@ def get_or_create_vapid_keys():
     if public_key and private_key:
         return public_key, private_key
 
-    # توليد مفاتيح جديدة
     vapid = Vapid()
     vapid.generate_keys()
     public_key = vapid.public_key
@@ -25,21 +24,25 @@ def get_or_create_vapid_keys():
     set_setting('vapid_private_key', private_key)
     return public_key, private_key
 
+def get_vapid_subject():
+    """جلب موضوع VAPID من الإعدادات أو استخدام الافتراضي."""
+    return get_setting('vapid_subject', DEFAULT_VAPID_SUBJECT)
+
 def send_web_push(subscription_info, payload):
     """إرسال إشعار Push لاشتراك معين."""
     try:
         public_key, private_key = get_or_create_vapid_keys()
+        vapid_subject = get_vapid_subject()
         webpush(
             subscription_info=subscription_info,
             data=json.dumps(payload),
             vapid_private_key=private_key,
-            vapid_claims={"sub": VAPID_SUBJECT}
+            vapid_claims={"sub": vapid_subject}
         )
         return True
     except WebPushException as e:
         current_app.logger.error(f"WebPushException: {e}")
         if e.response and e.response.status_code in [404, 410]:
-            # الاشتراك لم يعد صالحًا
             raise e
         return False
     except Exception as e:

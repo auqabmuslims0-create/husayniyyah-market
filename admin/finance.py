@@ -31,10 +31,12 @@ def admin_finance():
     active_stores = models.Store.query.filter_by(subscription_status='active').count()
     pending_subscriptions = models.Subscription.query.filter_by(status='pending').count()
 
+    # استعلام مجمع لأدوار المستخدمين
     user_role_counts = db.session.query(
         models.User.role, func.count(models.User.id).label('count')
     ).group_by(models.User.role).all()
 
+    # استعلام مجمع لحالات الطلبات
     order_status_counts = db.session.query(
         models.Order.status, func.count(models.Order.id).label('count')
     ).group_by(models.Order.status).all()

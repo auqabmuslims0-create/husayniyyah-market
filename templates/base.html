@@ -270,12 +270,14 @@
   </style>
   <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/offlineDB.js') }}"></script>
-<script src="{{ url_for('static', filename='js/localStore.js') }}"></script>  
+<script src="{{ url_for('static', filename='js/localStore.js') }}"></script>
 
   <script>
     var csrfToken = "{{ csrf_token }}";
 
     function showToast(message, type = 'info') {
+      // توحيد: تحويل 'danger' إلى 'error'
+      if (type === 'danger') type = 'error';
       const container = document.getElementById('toastContainerTop');
       if (!container) return;
       const toast = document.createElement('div');
@@ -285,7 +287,7 @@
       toast.setAttribute('data-bs-autohide', 'true');
       let iconHtml = '';
       if (type === 'success') iconHtml = '<i class="bi bi-check-circle-fill me-1 text-success"></i>';
-      else if (type === 'danger' || type === 'error') iconHtml = '<i class="bi bi-exclamation-circle-fill me-1 text-danger"></i>';
+      else if (type === 'error') iconHtml = '<i class="bi bi-exclamation-circle-fill me-1 text-danger"></i>';
       else iconHtml = '<i class="bi bi-info-circle-fill me-1 text-info"></i>';
       toast.innerHTML = `<div class="d-flex"><div class="toast-body">${iconHtml}${message}</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="إغلاق"></button></div>`;
       container.prepend(toast);
@@ -379,7 +381,6 @@
       if (!('Notification' in window)) return;
       if (Notification.permission === 'granted') return;
       if (Notification.permission === 'denied') return;
-      // نطلب فقط إذا لم يطلب من قبل
       if (localStorage.getItem('notifPermissionAsked') === 'true') return;
       localStorage.setItem('notifPermissionAsked', 'true');
       Notification.requestPermission().then(permission => {
@@ -404,27 +405,31 @@
       });
     };
 
-    // التحكم في شاشة السبلاش (تظهر مرة واحدة في الجلسة)
+    // التحكم في شاشة السبلاش (تظهر مرة واحدة فقط كل ساعة)
     (function() {
       const splash = document.getElementById('appSplash');
       if (!splash) return;
 
-      // إذا ظهرت من قبل في هذه الجلسة، نتركها مخفية
-      if (sessionStorage.getItem('splash_shown')) {
+      const SPLASH_INTERVAL = 60 * 60 * 1000; // ساعة واحدة
+      const lastShown = localStorage.getItem('splash_last_shown');
+      const now = Date.now();
+
+      // إذا ظهرت مؤخرًا، لا نعرضها
+      if (lastShown && (now - parseInt(lastShown, 10)) < SPLASH_INTERVAL) {
         return;
       }
 
-      // أول ظهور في الجلسة: نعرضها ونضع علامة
+      // نعرضها ونسجل الوقت
       splash.style.display = 'flex';
-      sessionStorage.setItem('splash_shown', 'true');
+      localStorage.setItem('splash_last_shown', now.toString());
 
-      // بعد 4 ثوانٍ نبدأ تأثير الإخفاء ثم الإزالة
+      // بعد 1.5 ثانية نخفيها
       setTimeout(function() {
         splash.classList.add('fade-out');
         setTimeout(function() {
           splash.remove();
         }, 500);
-      }, 4000);
+      }, 1500);
     })();
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -445,7 +450,6 @@
       });
 
       LocalStore.updateCartBadges();
-      // طلب إذن الإشعارات
       requestNotificationPermission();
     });
 

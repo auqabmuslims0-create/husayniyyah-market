@@ -130,18 +130,19 @@ def account_update():
     avatar_file = request.files.get('avatar')
     if avatar_file and avatar_file.filename != '':
         try:
-            avatar_url = save_image(avatar_file)
+            old_avatar_url = user.avatar
+            avatar_url = save_image(avatar_file, old_url=old_avatar_url)
         except Exception as e:
             flash(f'استثناء أثناء الرفع: {str(e)}', 'error')
             return redirect(url_for('auth.account'))
         if avatar_url:
-            flash(f'تم رفع الصورة بنجاح: {avatar_url}', 'success')
+            flash('تم رفع الصورة بنجاح', 'success')
             user.avatar = avatar_url
         else:
             flash('فشل رفع الصورة - save_image أرجعت None', 'error')
             return redirect(url_for('auth.account'))
     else:
-        flash('لم يتم اختيار صورة', 'error')
+        pass  # لا صورة جديدة، لا تغيير
 
     db.session.commit()
     flash('تم تحديث بيانات الحساب بنجاح', 'success')

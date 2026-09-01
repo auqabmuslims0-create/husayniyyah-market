@@ -36,13 +36,12 @@
         font-size: 4rem;
         color: #adb5bd;
     }
-    /* الصور المصغرة: تلتف تلقائياً وتخفي شريط التمرير */
     .thumbnails-row {
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
         padding: 5px;
-        overflow-x: hidden; /* إخفاء الشريط الأفقي نهائياً */
+        overflow-x: hidden;
     }
     .thumbnail-item {
         width: 70px;
@@ -167,6 +166,69 @@
         border-radius: var(--radius-sm);
         min-width: 48px;
     }
+
+    /* قسم فيديو المنتج بأسلوب الريلز */
+    .product-reel-video-section {
+        margin-top: 30px;
+        margin-bottom: 30px;
+    }
+    .product-reel-slide {
+        position: relative;
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+        border-radius: 20px;
+        overflow: hidden;
+        background: #000;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        line-height: 0;
+    }
+    .product-reel-video-wrapper {
+        position: relative;
+        width: 100%;
+        line-height: 0;
+    }
+    .product-reel-video {
+        width: 100%;
+        height: auto;
+        display: block;
+        cursor: pointer;
+    }
+    .product-reel-play-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 3;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .product-reel-play-btn {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.6);
+        border: 2px solid #fff;
+        color: #fff;
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        pointer-events: auto;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        transition: background 0.2s, transform 0.2s;
+    }
+    .product-reel-play-btn:hover {
+        background: rgba(0,0,0,0.8);
+        transform: scale(1.1);
+    }
+    .product-reel-play-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
 </style>
 {% endblock %}
 
@@ -251,6 +313,59 @@
         </div>
     </div>
 
+    <!-- قسم فيديو المنتج (إن وجد) -->
+    {% if product.video %}
+    <div class="product-reel-video-section">
+        <h5 class="fw-bold mb-3"><i class="bi bi-camera-video"></i> فيديو المنتج</h5>
+        <div class="product-reel-slide" id="product-reel-{{ product.id }}">
+            <div class="product-reel-video-wrapper">
+                <video class="product-reel-video" loop muted playsinline preload="metadata"
+                       src="{{ product.video | get_image_url }}"
+                       poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
+                       data-product-reel-video>
+                </video>
+                <div class="product-reel-play-overlay" data-play-overlay>
+                    <button type="button" class="product-reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="reel-content" style="position: absolute; bottom: 0; left: 0; right: 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; padding: 15px; gap: 10px; pointer-events: none; line-height: 1.6;">
+                <div class="reel-info-bottom" style="flex: 1; min-width: 0; pointer-events: auto;">
+                    <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="reel-store-link" style="display: flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; margin-bottom: 8px;">
+                        {% if product.store.logo_url %}
+                            <img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #fff;" alt="{{ product.store.name }}">
+                        {% else %}
+                            <div class="reel-store-avatar-placeholder" style="width: 40px; height: 40px; border-radius: 50%; background: #333; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem;"><i class="bi bi-shop"></i></div>
+                        {% endif %}
+                        <span class="reel-store-name" style="font-weight: 600; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">{{ product.store.name }}</span>
+                    </a>
+                    <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link" style="text-decoration: none; color: #fff; display: block;">
+                        <h5 class="reel-product-name" style="margin: 0; font-size: 1.1rem; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">{{ product.name }}</h5>
+                        <div class="reel-product-price" style="font-size: 1rem; font-weight: 600; color: #ffd700; text-shadow: 0 1px 3px rgba(0,0,0,0.5);">
+                            {{ product.price|format_price }} ل.س
+                            {% if product.is_offer and product.original_price %}
+                                <span class="text-decoration-line-through text-muted ms-1">{{ product.original_price|format_price }}</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                </div>
+                <div class="reel-actions-column" style="display: flex; flex-direction: column; gap: 12px; align-items: center; pointer-events: auto;">
+                    <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')" title="مشاركة">
+                        <i class="bi bi-share"></i>
+                    </button>
+                    <button class="reel-action-btn {% if product.stock_quantity == 0 %}disabled{% endif %}"
+                            onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة للسلة', 'success'))"
+                            title="أضف إلى السلة"
+                            {% if product.stock_quantity == 0 %}disabled{% endif %}>
+                        <i class="bi bi-cart-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- التقييمات والتعليقات -->
     <div class="row mt-5">
         <div class="col-12">
@@ -321,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // تقييم النجوم (إصلاح النقر على الأيقونة)
+    // تقييم النجوم
     const stars = document.querySelectorAll('#starRating .star');
     const ratingInput = document.getElementById('ratingValue');
 
@@ -360,6 +475,39 @@ document.addEventListener('DOMContentLoaded', function() {
             updateStars(stars, current);
         });
     });
+
+    // التحكم في فيديو المنتج
+    const productVideo = document.querySelector('[data-product-reel-video]');
+    if (productVideo) {
+        const slide = productVideo.closest('.product-reel-slide');
+        const overlay = slide.querySelector('[data-play-overlay]');
+        const playBtn = slide.querySelector('[data-play-btn]');
+
+        function playVideo() {
+            productVideo.play().catch(() => {});
+            if (overlay) overlay.classList.add('hidden');
+        }
+
+        function pauseVideo() {
+            productVideo.pause();
+            if (overlay) overlay.classList.remove('hidden');
+        }
+
+        if (playBtn) {
+            playBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                playVideo();
+            });
+        }
+
+        productVideo.addEventListener('click', function() {
+            if (productVideo.paused) {
+                playVideo();
+            } else {
+                pauseVideo();
+            }
+        });
+    }
 
     // حفظ المنتج والمتجر في IndexedDB
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {

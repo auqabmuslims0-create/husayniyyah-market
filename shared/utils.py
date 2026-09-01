@@ -145,13 +145,34 @@ def _secure_file(file, allowed_extensions, max_size):
         return None
     return ext
 
-def save_image(file):
-    """رفع صورة إلى Cloudinary وإرجاع الرابط السحابي."""
+def delete_cloudinary_file(url):
+    """حذف ملف من Cloudinary إذا كان الرابط سحابيًا."""
+    if not url or not url.startswith('http'):
+        return
+    try:
+        # استخراج public_id من الرابط
+        parts = url.split('/')
+        # الرابط النموذجي: https://res.cloudinary.com/<cloud>/image/upload/v1234567890/<folder>/<public_id>.<ext>
+        # نأخذ الجزء بعد آخر '/'
+        filename_with_ext = parts[-1]
+        public_id = filename_with_ext.rsplit('.', 1)[0]
+        # يجب أن يتضمن المجلد
+        folder = ''
+        if 'upload' in parts:
+            idx = parts.index('upload')
+            if idx + 2 < len(parts):
+                folder = '/'.join(parts[idx+2:-1])
+        full_public_id = f"{folder}/{public_id}" if folder else public_id
+        cloudinary.uploader.destroy(full_public_id)
+    except Exception as e:
+        current_app.logger.error(f"Failed to delete old Cloudinary file: {e}")
+
+def save_image(file, old_url=None):
+    """رفع صورة إلى Cloudinary وإرجاع الرابط السحابي، مع حذف القديم إن وجد."""
     ext = _secure_file(file, ALLOWED_IMAGE_EXTENSIONS, MAX_IMAGE_SIZE)
     if not ext:
         return None
     try:
-        # إعادة تعيين مؤشر الملف للبداية
         file.seek(0)
         upload_result = cloudinary.uploader.upload(
             file,
@@ -160,12 +181,15 @@ def save_image(file):
             quality="auto:good",
             fetch_format="auto"
         )
-        return upload_result.get('secure_url')
+        new_url = upload_result.get('secure_url')
+        if new_url and old_url:
+            delete_cloudinary_file(old_url)
+        return new_url
     except Exception:
         return None
 
-def save_video(file):
-    """رفع فيديو إلى Cloudinary مع دعم الرفع المجزأ لمنع الفشل مع الملفات الكبيرة."""
+def save_video(file, old_url=None):
+    """رفع فيديو إلى Cloudinary مع دعم الرفع المجزأ، وحذف القديم إن وجد."""
     ext = _secure_file(file, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_SIZE)
     if not ext:
         return None
@@ -178,7 +202,10 @@ def save_video(file):
             chunk_size=6000000,  # 6MB per chunk
             timeout=120
         )
-        return upload_result.get('secure_url')
+        new_url = upload_result.get('secure_url')
+        if new_url and old_url:
+            delete_cloudinary_file(old_url)
+        return new_url
     except Exception as e:
         current_app.logger.error(f"Video upload failed: {e}")
         return None

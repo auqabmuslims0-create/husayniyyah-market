@@ -38,20 +38,12 @@ const PUBLIC_PATHS = [
 ];
 
 // مسارات لوحات التحكم التي نسمح بتخزينها (صفحات القراءة فقط)
+// تم التصحيح لتطابق المسارات الفعلية
 const PROTECTED_PATHS = [
-  '/admin/dashboard',
-  '/admin/orders',
-  '/admin/users',
-  '/admin/stores',
-  '/admin/subscriptions',
-  '/admin/chats',
-  '/admin/delivery-persons',
-  '/admin/finance',
-  '/store_owner/dashboard',
-  '/store_owner/products',
-  '/store_owner/categories',
-  '/store_owner/orders',
-  '/delivery/dashboard'
+  '/admin',
+  '/my_stores',
+  '/store',
+  '/delivery'
 ];
 
 // دمج المسارات العامة والمحمية للتحقق من إمكانية التخزين

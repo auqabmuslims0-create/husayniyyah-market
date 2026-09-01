@@ -8,8 +8,8 @@ waitress==3.0.0
 flask-limiter==3.5.0
 flask-talisman==1.1.0
 gunicorn==21.2.0
-Pillow
+Pillow==10.3.0
 psycopg2-binary==2.9.9
 pywebpush==1.14.0
 cryptography==42.0.5
-cloudinary
+cloudinary==1.40.0

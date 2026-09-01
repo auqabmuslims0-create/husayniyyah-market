@@ -1,12 +1,18 @@
 /**
  * LocalStore - إدارة السلة والمفضلة والملف الشخصي محلياً مع مزامنة خادم
  * يعتمد على OfflineDB لتخزين بيانات المنتجات والمتاجر في IndexedDB
+ * تم تحسين sync بإضافة debounce لتقليل الطلبات المتكررة.
  */
 const LocalStore = (function() {
     const CART_KEY = 'local_cart';
     const FAVORITES_KEY = 'local_favorites';
     const PRODUCTS_CACHE_KEY = 'local_products_cache';
     const PROFILE_KEY = 'local_profile';
+
+    // متغيرات التحكم في المزامنة
+    let debounceTimer = null;
+    let isSyncing = false;
+    const DEBOUNCE_DELAY = 500; // مللي ثانية
 
     function getCart() {
         try {
@@ -152,12 +158,12 @@ const LocalStore = (function() {
         }
     }
 
-    async function sync() {
-        if (!navigator.onLine) return;
-        // مزامنة السلة والمفضلة أولاً
-        const cart = getCart();
-        const favs = getFavorites();
+    async function performSync() {
+        if (!navigator.onLine || isSyncing) return;
+        isSyncing = true;
         try {
+            const cart = getCart();
+            const favs = getFavorites();
             const csrfToken = window.csrfToken || '';
             await fetch('/api/cart/sync', {
                 method: 'POST',
@@ -181,9 +187,21 @@ const LocalStore = (function() {
             }
         } catch (err) {
             console.log('Local sync failed:', err);
+        } finally {
+            isSyncing = false;
         }
-        // مزامنة الطلبات المعلقة
-        syncPendingOrders();
+        // مزامنة الطلبات المعلقة بعد نجاح المزامنة الأساسية
+        await syncPendingOrders();
+    }
+
+    function sync() {
+        if (!navigator.onLine) return;
+        // إلغاء المؤقت السابق وإعادة الجدولة
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            debounceTimer = null;
+            performSync();
+        }, DEBOUNCE_DELAY);
     }
 
     async function syncProfile(profile) {
@@ -258,11 +276,22 @@ const LocalStore = (function() {
         return favs[key].includes(id);
     }
 
-    window.addEventListener('online', sync);
+    // عند عودة الاتصال، مزامنة فورية
+    window.addEventListener('online', () => {
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+            debounceTimer = null;
+        }
+        performSync();
+    });
+
+    // عند الإقلاع، مزامنة إذا كان متصلاً
     if (document.readyState === 'complete') {
         sync();
     } else {
-        window.addEventListener('load', sync);
+        window.addEventListener('load', () => {
+            if (navigator.onLine) sync();
+        });
     }
 
     return {
