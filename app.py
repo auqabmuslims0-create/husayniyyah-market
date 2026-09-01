@@ -1,4 +1,4 @@
-import sy
+import sys
 import os
 import secrets
 from dotenv import load_dotenv
