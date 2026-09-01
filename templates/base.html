@@ -46,13 +46,11 @@
   <link href="{{ url_for('static', filename='css/dark-mode.css') }}" rel="stylesheet">
 
   <script>
-    // فحص حالة onboarding
     (function() {
       if (!localStorage.getItem('onboarding_done') && window.location.pathname !== '/onboarding') {
         window.location.replace('/onboarding');
       }
     })();
-    // فحص الوضع الداكن
     (function() {
       if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
@@ -61,7 +59,6 @@
   </script>
 
   <style>
-    /* مؤشر انقطاع الاتصال */
     .connection-indicator {
       position: fixed;
       top: 50%;
@@ -93,7 +90,6 @@
       height: 18px;
     }
 
-    /* Splash Screen مخصصة */
     #appSplash {
       position: fixed;
       top: 0;
@@ -133,27 +129,7 @@
       100% { transform: scale(1); }
     }
   </style>
-<style>
-    /* إصلاح مشكلة لوحة المفاتيح */
-    input, textarea, select {
-        -webkit-user-select: text !important;
-        -moz-user-select: text !important;
-        -ms-user-select: text !important;
-        user-select: text !important;
-        pointer-events: auto !important;
-        touch-action: manipulation !important;
-        position: relative;
-        z-index: 9999;
-    }
-    .modal, .offcanvas, .toast-container-top {
-        pointer-events: none !important;
-    }
-    .modal.show, .offcanvas.show {
-        pointer-events: auto !important;
-    }
-</style>
-  {% block head %}
-{% endblock %}
+  {% block head %}{% endblock %}
 </head>
 <body class="{% if show_bottom_nav %}with-bottom-nav{% else %}no-bottom-nav{% endif %}">
 
@@ -287,16 +263,24 @@
         padding-bottom: env(safe-area-inset-bottom);
       }
     }
+    /* إصلاح طبقات العرض: الحقول لا تغطي القوائم */
+    input, textarea, select, [contenteditable="true"] {
+      position: relative;
+      z-index: 1;
+    }
+    .modal, .offcanvas, .toast-container-top {
+      z-index: 1050;
+    }
   </style>
+
   <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-<script src="{{ url_for('static', filename='js/offlineDB.js') }}"></script>
-<script src="{{ url_for('static', filename='js/localStore.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/offlineDB.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/localStore.js') }}"></script>
 
   <script>
     var csrfToken = "{{ csrf_token }}";
 
     function showToast(message, type = 'info') {
-      // توحيد: تحويل 'danger' إلى 'error'
       if (type === 'danger') type = 'error';
       const container = document.getElementById('toastContainerTop');
       if (!container) return;
@@ -381,7 +365,6 @@
         }
     }
 
-    // مؤشر انقطاع الاتصال
     const connectionIndicator = document.getElementById('connectionIndicator');
     function updateConnectionStatus() {
       if (connectionIndicator) {
@@ -396,7 +379,6 @@
     window.addEventListener('offline', updateConnectionStatus);
     updateConnectionStatus();
 
-    // طلب إذن الإشعارات تلقائيًا عند أول تحميل
     function requestNotificationPermission() {
       if (!('Notification' in window)) return;
       if (Notification.permission === 'granted') return;
@@ -410,7 +392,6 @@
       }).catch(() => {});
     }
 
-    // طلب الموقع الجغرافي عند الحاجة (يمكن استدعاؤها من أي صفحة)
     window.requestLocationPermission = function() {
       return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
@@ -425,25 +406,15 @@
       });
     };
 
-    // التحكم في شاشة السبلاش (تظهر مرة واحدة فقط كل ساعة)
     (function() {
       const splash = document.getElementById('appSplash');
       if (!splash) return;
-
-      const SPLASH_INTERVAL = 60 * 60 * 1000; // ساعة واحدة
+      const SPLASH_INTERVAL = 60 * 60 * 1000;
       const lastShown = localStorage.getItem('splash_last_shown');
       const now = Date.now();
-
-      // إذا ظهرت مؤخرًا، لا نعرضها
-      if (lastShown && (now - parseInt(lastShown, 10)) < SPLASH_INTERVAL) {
-        return;
-      }
-
-      // نعرضها ونسجل الوقت
+      if (lastShown && (now - parseInt(lastShown, 10)) < SPLASH_INTERVAL) return;
       splash.style.display = 'flex';
       localStorage.setItem('splash_last_shown', now.toString());
-
-      // بعد 1.5 ثانية نخفيها
       setTimeout(function() {
         splash.classList.add('fade-out');
         setTimeout(function() {
@@ -480,102 +451,86 @@
         localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
       });
     }
+
+    // جلب التحديثات الفورية
+    function fetchUpdates() {
+      fetch('/api/updates', {headers: {'Accept': 'application/json'}})
+      .then(res => res.json())
+      .then(data => {
+        const unreadBadge = document.querySelector('.badge.bg-warning');
+        if (data.unread_notifications > 0) {
+          if (unreadBadge) {
+            unreadBadge.textContent = data.unread_notifications;
+            unreadBadge.style.display = 'inline';
+          }
+          const dot = document.querySelector('.notification-dot');
+          if (dot) dot.style.display = 'block';
+        } else {
+          if (unreadBadge) unreadBadge.style.display = 'none';
+          const dot = document.querySelector('.notification-dot');
+          if (dot) dot.style.display = 'none';
+        }
+        if (data.new_orders_count > 0) {
+          showToast('لديك ' + data.new_orders_count + ' طلب جديد بانتظار التأكيد', 'info');
+        }
+        if (data.delivery_new_orders_count > 0) {
+          showToast('لديك ' + data.delivery_new_orders_count + ' طلب جاهز للتسليم', 'info');
+        }
+        if (data.admin_pending_subscriptions > 0) {
+          showToast('لديك ' + data.admin_pending_subscriptions + ' اشتراك معلق', 'info');
+        }
+      })
+      .catch(err => console.log('Update fetch failed', err));
+    }
+    setInterval(fetchUpdates, 15000);
+    fetchUpdates();
   </script>
 
-  <!-- تسجيل Service Worker -->
+  <!-- تسجيل Service Worker و Push -->
   <script>
     if ('serviceWorker' in navigator && 'PushManager' in window) {
-        window.addEventListener('load', async () => {
-            try {
-                const registration = await navigator.serviceWorker.register('/sw.js');
-                console.log('Service Worker registered');
-
-                // طلب إذن الإشعارات (إذا لم يُمنح مسبقاً)
-                const permission = await Notification.requestPermission();
-                if (permission === 'granted') {
-                    // جلب مفتاح VAPID العام من الخادم
-                    const vapidResponse = await fetch('/api/push/vapid_public_key');
-                    const vapidData = await vapidResponse.json();
-                    const vapidPublicKey = vapidData.public_key;
-
-                    const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
-
-                    const subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: convertedVapidKey
-                    });
-
-                    // إرسال الاشتراك إلى الخادم
-                    await fetch('/api/push/subscribe', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-Token': window.csrfToken
-                        },
-                        body: JSON.stringify({ subscription: subscription.toJSON() })
-                    });
-                    console.log('Push subscription sent');
-                }
-            } catch (err) {
-                console.error('Service Worker registration or push subscription failed', err);
-            }
-        });
+      window.addEventListener('load', async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js');
+          console.log('Service Worker registered');
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            const vapidResponse = await fetch('/api/push/vapid_public_key');
+            const vapidData = await vapidResponse.json();
+            const vapidPublicKey = vapidData.public_key;
+            const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+            const subscription = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: convertedVapidKey
+            });
+            await fetch('/api/push/subscribe', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': window.csrfToken
+              },
+              body: JSON.stringify({ subscription: subscription.toJSON() })
+            });
+            console.log('Push subscription sent');
+          }
+        } catch (err) {
+          console.error('Service Worker or push subscription failed', err);
+        }
+      });
     }
 
     function urlBase64ToUint8Array(base64String) {
-        const padding = '='.repeat((4 - base64String.length % 4) % 4);
-        const base64 = (base64String + padding)
-            .replace(/\-/g, '+')
-            .replace(/_/g, '/');
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-            outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
     }
-</script>
-<script>
-function fetchUpdates() {
-    fetch('/api/updates', {headers: {'Accept': 'application/json'}})
-    .then(res => res.json())
-    .then(data => {
-        // تحديث شارة الإشعارات في القائمة الجانبية
-        const unreadBadge = document.querySelector('.badge.bg-warning');
-        if (data.unread_notifications > 0) {
-            if (unreadBadge) {
-                unreadBadge.textContent = data.unread_notifications;
-                unreadBadge.style.display = 'inline';
-            }
-            const dot = document.querySelector('.notification-dot');
-            if (dot) dot.style.display = 'block';
-        } else {
-            if (unreadBadge) unreadBadge.style.display = 'none';
-            const dot = document.querySelector('.notification-dot');
-            if (dot) dot.style.display = 'none';
-        }
+  </script>
 
-        // تنبيه فوري لأصحاب المتاجر عند وجود طلبات جديدة
-        if (data.new_orders_count > 0) {
-            showToast('لديك ' + data.new_orders_count + ' طلب جديد بانتظار التأكيد', 'info');
-        }
-        // تنبيه للمندوب
-        if (data.delivery_new_orders_count > 0) {
-            showToast('لديك ' + data.delivery_new_orders_count + ' طلب جاهز للتسليم', 'info');
-        }
-        // تنبيه للأدمن
-        if (data.admin_pending_subscriptions > 0) {
-            showToast('لديك ' + data.admin_pending_subscriptions + ' اشتراك معلق', 'info');
-        }
-    })
-    .catch(err => console.log('Update fetch failed', err));
-}
-
-// تشغيل الجلب كل 15 ثانية
-setInterval(fetchUpdates, 15000);
-fetchUpdates();
-</script>
-{% block scripts %}
-{% endblock %}
+  {% block scripts %}{% endblock %}
 </body>
 </html>
