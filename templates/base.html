@@ -530,7 +530,38 @@
       return outputArray;
     }
   </script>
+<!-- مودال تأكيد موحد -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmModalTitle">تأكيد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmModalMessage">هل أنت متأكد؟</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-danger" id="confirmModalBtn">تأكيد</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<script>
+function showConfirmModal(message, callback) {
+    const modalEl = document.getElementById('confirmModal');
+    if (!modalEl) return;
+    document.getElementById('confirmModalMessage').textContent = message;
+    const btn = document.getElementById('confirmModalBtn');
+    btn.onclick = function() {
+        bootstrap.Modal.getInstance(modalEl).hide();
+        if (typeof callback === 'function') callback();
+    };
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+</script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
