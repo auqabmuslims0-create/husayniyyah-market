@@ -578,8 +578,10 @@ function showConfirmModal(message, callback) {
     document.getElementById('confirmModalMessage').textContent = message;
     const btn = document.getElementById('confirmModalBtn');
     btn.onclick = function() {
-        bootstrap.Modal.getInstance(modalEl).hide();
-        if (typeof callback === 'function') callback();
+    if (typeof callback === 'function') {
+        callback();
+    }
+    bootstrap.Modal.getInstance(modalEl).hide();
     };
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
