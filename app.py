@@ -83,6 +83,9 @@ def get_secret_key():
         return key
     raise RuntimeError('SECRET_KEY must be set in production environment')
 
+# تعيين SECRET_KEY
+app.config['SECRET_KEY'] = get_secret_key()
+
 def get_jwt_secret_key():
     key = os.environ.get('JWT_SECRET_KEY')
     if key:
@@ -100,6 +103,7 @@ def get_jwt_secret_key():
         return key
     raise RuntimeError('JWT_SECRET_KEY must be set in production environment')
 
+# تعيين JWT_SECRET_KEY
 app.config['JWT_SECRET_KEY'] = get_jwt_secret_key()
 
 # إعداد قاعدة البيانات مع دعم PostgreSQL
