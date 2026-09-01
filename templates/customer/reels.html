@@ -5,208 +5,52 @@
 
 {% block head %}
 <style>
-    .reels-page-container {
-        max-width: 500px;
-        margin: 0 auto;
-        padding-bottom: 20px;
-    }
-    .reels-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 15px;
-    }
-    .reels-vertical-container {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-    }
-    .reel-slide {
-        position: relative;
-        width: 100%;
-        border-radius: 20px;
-        overflow: hidden;
-        background: #000;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-        line-height: 0;
-    }
-    .reel-video-wrapper {
-        position: relative;
-        width: 100%;
-        line-height: 0;
-    }
-    .reel-video {
-        width: 100%;
-        height: auto;
-        display: block;
-        cursor: pointer;
-    }
-    .reel-video-placeholder {
-        width: 100%;
-        aspect-ratio: 16 / 9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 4rem;
-        color: #fff;
-        background: #333;
-    }
-    .reel-content {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 2;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        padding: 15px;
-        gap: 10px;
-        pointer-events: none;
-        line-height: 1.6;
-    }
-    .reel-info-bottom {
-        flex: 1;
-        min-width: 0;
-        pointer-events: auto;
-    }
-    /* رابط المتجر فقط على الصورة الرمزية */
-    .reel-store-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-        color: #fff;
-        margin-bottom: 8px;
-        pointer-events: auto;
-        cursor: pointer;
-    }
-    .reel-store-avatar,
-    .reel-store-avatar-placeholder {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #fff;
-        background: #333;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-        pointer-events: auto;
-    }
-    .reel-store-name {
-        font-weight: 600;
-        font-size: 0.9rem;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-        pointer-events: none; /* لا يوجه عند الضغط على الاسم */
-    }
-    /* رابط المنتج */
-    .reel-product-link {
-        text-decoration: none;
-        color: #fff;
-        display: block;
-        pointer-events: auto;
-        cursor: pointer;
-    }
-    .reel-product-name {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 700;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-    }
-    .reel-product-price {
-        font-size: 1rem;
-        font-weight: 600;
-        color: #ffd700;
-        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-    }
-    .reel-actions-column {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        align-items: center;
-        pointer-events: auto;
-    }
-    .reel-action-btn {
-        background: rgba(255,255,255,0.2);
-        border: none;
-        color: #fff;
-        width: 46px;
-        height: 46px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.3rem;
-        cursor: pointer;
-        transition: background 0.2s, transform 0.2s;
-        backdrop-filter: blur(5px);
-        -webkit-backdrop-filter: blur(5px);
-    }
-    .reel-action-btn:hover {
-        background: rgba(255,255,255,0.35);
-        transform: scale(1.05);
-    }
-    .reel-action-btn.active {
-        background: #dc3545;
-        color: #fff;
-    }
-    .reel-action-btn:disabled {
-        opacity: 0.5;
-        pointer-events: none;
-    }
+    .reels-page-container { max-width: 500px; margin: 0 auto; padding-bottom: 20px; }
+    .reels-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+    .reels-vertical-container { display: flex; flex-direction: column; gap: 15px; }
+    .reel-slide { position: relative; width: 100%; border-radius: 20px; overflow: hidden; background: #000; box-shadow: 0 8px 20px rgba(0,0,0,0.2); line-height: 0; }
+    .reel-video-wrapper { position: relative; width: 100%; line-height: 0; }
+    .reel-video { width: 100%; height: auto; display: block; cursor: pointer; background: #000; }
+    .reel-video-placeholder { width: 100%; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #fff; background: #333; }
+    .reel-content { position: absolute; bottom: 0; left: 0; right: 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; padding: 15px; gap: 10px; pointer-events: none; line-height: 1.6; }
+    .reel-info-bottom { flex: 1; min-width: 0; pointer-events: auto; }
+    .reel-store-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; margin-bottom: 8px; pointer-events: auto; cursor: pointer; }
+    .reel-store-avatar, .reel-store-avatar-placeholder { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; background: #333; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem; flex-shrink: 0; pointer-events: auto; }
+    .reel-store-name { font-weight: 600; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.5); pointer-events: none; }
+    .reel-product-link { text-decoration: none; color: #fff; display: block; pointer-events: auto; cursor: pointer; }
+    .reel-product-name { margin: 0; font-size: 1.1rem; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+    .reel-product-price { font-size: 1rem; font-weight: 600; color: #ffd700; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+    .reel-actions-column { display: flex; flex-direction: column; gap: 12px; align-items: center; pointer-events: auto; }
+    .reel-action-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; transition: background 0.2s, transform 0.2s; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+    .reel-action-btn:hover { background: rgba(255,255,255,0.35); transform: scale(1.05); }
+    .reel-action-btn.active { background: #dc3545; color: #fff; }
+    .reel-action-btn:disabled { opacity: 0.5; pointer-events: none; }
 
-    /* زر التشغيل: مثلث فقط بدون دائرة */
-    .reel-play-overlay {
+    /* زر التشغيل مثلث بدون دائرة */
+    .reel-play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 3; pointer-events: none; transition: opacity 0.3s ease; }
+    .reel-play-btn { background: transparent; border: none; color: #fff; font-size: 5rem; line-height: 1; cursor: pointer; pointer-events: auto; text-shadow: 0 0 12px rgba(0,0,0,0.8); transition: color 0.2s, text-shadow 0.2s, transform 0.2s; padding: 0; }
+    .reel-play-btn:hover { color: #ffd700; transform: scale(1.1); }
+    .reel-play-overlay.hidden { opacity: 0; pointer-events: none; }
+
+    /* مؤشر التحميل */
+    .video-loading-spinner {
         position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 3;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 4;
+        display: none;
+        width: 50px; height: 50px;
+        border: 4px solid rgba(255,255,255,0.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
     }
-    .reel-play-btn {
-        background: transparent;
-        border: none;
-        color: #fff;
-        font-size: 5rem;
-        line-height: 1;
-        cursor: pointer;
-        pointer-events: auto;
-        text-shadow: 0 0 12px rgba(0,0,0,0.8);
-        transition: color 0.2s, text-shadow 0.2s, transform 0.2s;
-        padding: 0;
-    }
-    .reel-play-btn:hover {
-        color: #ffd700;
-        text-shadow: 0 0 20px rgba(0,0,0,0.9);
-        transform: scale(1.1);
-    }
-    .reel-play-overlay.hidden {
-        opacity: 0;
-        pointer-events: none;
-    }
+    .video-loading-spinner.show { display: block; }
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
     @media (max-width: 576px) {
-        .reel-action-btn {
-            width: 42px;
-            height: 42px;
-            font-size: 1.1rem;
-        }
-        .reel-product-name {
-            font-size: 0.95rem;
-        }
-        .reel-product-price {
-            font-size: 0.9rem;
-        }
-        .reel-play-btn {
-            font-size: 4rem;
-        }
+        .reel-action-btn { width: 42px; height: 42px; font-size: 1.1rem; }
+        .reel-play-btn { font-size: 4rem; }
     }
 </style>
 {% endblock %}
@@ -224,26 +68,24 @@
         <div class="reel-slide" id="reel-{{ product.id }}">
             <div class="reel-video-wrapper">
                 {% if product.video %}
-                <video class="reel-video" loop playsinline preload="metadata"
+                <video class="reel-video" loop playsinline preload="auto"
                        src="{{ product.video | get_image_url }}"
                        poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
                        data-reel-video>
                 </video>
+                <div class="video-loading-spinner" data-video-spinner></div>
                 <div class="reel-play-overlay" data-play-overlay>
                     <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
                         <i class="bi bi-play-fill"></i>
                     </button>
                 </div>
                 {% else %}
-                <div class="reel-video-placeholder">
-                    <i class="bi bi-film"></i>
-                </div>
+                <div class="reel-video-placeholder"><i class="bi bi-film"></i></div>
                 {% endif %}
             </div>
 
             <div class="reel-content">
                 <div class="reel-info-bottom">
-                    <!-- رابط المتجر: الصورة فقط -->
                     <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="reel-store-link">
                         {% if product.store.logo_url %}
                             <img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ product.store.name }}">
@@ -251,34 +93,15 @@
                             <div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>
                         {% endif %}
                     </a>
-                    <!-- رابط المنتج: الاسم والسعر -->
                     <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
                         <h5 class="reel-product-name">{{ product.name }}</h5>
-                        <div class="reel-product-price">
-                            {{ product.price|format_price }} ل.س
-                            {% if product.is_offer and product.original_price %}
-                                <span class="text-decoration-line-through text-muted ms-1">{{ product.original_price|format_price }}</span>
-                            {% endif %}
-                        </div>
+                        <div class="reel-product-price">{{ product.price|format_price }} ل.س {% if product.is_offer and product.original_price %}<span class="text-decoration-line-through text-muted ms-1">{{ product.original_price|format_price }}</span>{% endif %}</div>
                     </a>
                 </div>
-
                 <div class="reel-actions-column">
-                    <button class="reel-action-btn {% if product.id in user_reaction_map and user_reaction_map[product.id] == 'like' %}active{% endif %}"
-                            onclick="reactProduct({{ product.id }}, 'like', this)"
-                            title="إعجاب">
-                        <i class="bi bi-heart{% if product.id in user_reaction_map and user_reaction_map[product.id] == 'like' %}-fill{% endif %}"></i>
-                    </button>
-                    <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')"
-                            title="مشاركة">
-                        <i class="bi bi-share"></i>
-                    </button>
-                    <button class="reel-action-btn add-to-cart-reel {% if product.stock_quantity == 0 %}disabled{% endif %}"
-                            onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة للسلة', 'success'))"
-                            title="أضف إلى السلة"
-                            {% if product.stock_quantity == 0 %}disabled{% endif %}>
-                        <i class="bi bi-cart-plus"></i>
-                    </button>
+                    <button class="reel-action-btn {% if product.id in user_reaction_map and user_reaction_map[product.id] == 'like' %}active{% endif %}" onclick="reactProduct({{ product.id }}, 'like', this)" title="إعجاب"><i class="bi bi-heart{% if product.id in user_reaction_map and user_reaction_map[product.id] == 'like' %}-fill{% endif %}"></i></button>
+                    <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')" title="مشاركة"><i class="bi bi-share"></i></button>
+                    <button class="reel-action-btn {% if product.stock_quantity == 0 %}disabled{% endif %}" onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة للسلة', 'success'))" title="أضف إلى السلة" {% if product.stock_quantity == 0 %}disabled{% endif %}><i class="bi bi-cart-plus"></i></button>
                 </div>
             </div>
         </div>
@@ -295,7 +118,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     const videos = document.querySelectorAll('[data-reel-video]');
 
-    // إيقاف جميع الفيديوهات وإظهار أزرار التشغيل
     function pauseAllVideos() {
         videos.forEach(video => {
             video.pause();
@@ -304,16 +126,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // تشغيل فيديو معين مع الصوت وإيقاف الباقي
     function playVideo(video) {
         pauseAllVideos();
-        video.muted = false; // تفعيل الصوت عند التشغيل
-        video.play().catch(() => {});
-        const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
-        if (overlay) overlay.classList.add('hidden');
+        const spinner = video.closest('.reel-slide').querySelector('[data-video-spinner]');
+        // إظهار المؤشر إذا لم يكن الفيديو جاهزًا
+        if (video.readyState < 3) {
+            spinner.classList.add('show');
+        }
+        video.muted = false;
+        video.play().then(() => {
+            spinner.classList.remove('show');
+            const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
+            if (overlay) overlay.classList.add('hidden');
+        }).catch(() => {
+            spinner.classList.remove('show');
+        });
     }
 
-    // زر التشغيل المركزي
     document.querySelectorAll('[data-play-btn]').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -322,7 +151,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // النقر على الفيديو نفسه
     videos.forEach(video => {
         video.addEventListener('click', function() {
             if (video.paused) {
@@ -333,9 +161,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (overlay) overlay.classList.remove('hidden');
             }
         });
+        // إخفاء المؤشر عند جاهزية الفيديو
+        video.addEventListener('canplaythrough', function() {
+            const spinner = video.closest('.reel-slide').querySelector('[data-video-spinner]');
+            if (spinner) spinner.classList.remove('show');
+        });
+        video.addEventListener('waiting', function() {
+            const spinner = video.closest('.reel-slide').querySelector('[data-video-spinner]');
+            if (spinner) spinner.classList.add('show');
+        });
+        video.addEventListener('playing', function() {
+            const spinner = video.closest('.reel-slide').querySelector('[data-video-spinner]');
+            if (spinner) spinner.classList.remove('show');
+        });
     });
 
-    // عند مغادرة الفيديو للشاشة، أوقفه وأظهر زر التشغيل
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             const video = entry.target;
