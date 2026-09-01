@@ -49,6 +49,19 @@
     }
     .btn-custom { border-radius: 25px; font-weight: 600; transition: background 0.2s, transform 0.2s; }
     .btn-custom:hover { transform: translateY(-2px); background: var(--primary-dark); }
+
+    .video-duration-warning {
+        display: none;
+        color: #dc3545;
+        font-size: 0.85rem;
+        margin-top: 5px;
+    }
+    .video-duration-info {
+        display: none;
+        color: #198754;
+        font-size: 0.85rem;
+        margin-top: 5px;
+    }
 </style>
 {% endblock %}
 
@@ -60,7 +73,7 @@
     </h1>
 
     <div class="card form-card p-4 shadow-sm">
-        <form method="post" enctype="multipart/form-data"
+        <form method="post" enctype="multipart/form-data" id="productForm"
               action="{% if product %}{{ url_for('store.edit_product', store_id=store.id, product_id=product.id) }}{% else %}{{ url_for('store.new_product', store_id=store.id) }}{% endif %}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
 
@@ -108,7 +121,7 @@
 
             <!-- الفيديو -->
             <div class="mb-4">
-                <label class="form-label fw-bold">فيديو المنتج (اختياري)</label>
+                <label class="form-label fw-bold">فيديو المنتج (اختياري - بحد أقصى 60 ثانية)</label>
                 <div class="d-flex flex-wrap gap-2 align-items-center" id="videoContainer">
                     {% if product and product.video %}
                         <div class="video-card" id="existingVideoCard">
@@ -124,9 +137,11 @@
                     {% endif %}
                 </div>
                 <input type="file" name="video" id="videoInput" accept="video/*" class="d-none">
-                {% if product and product.video %}
-                <p class="text-muted small mt-2">اضغط × لإزالة الفيديو الحالي.</p>
-                {% endif %}
+                <p class="text-muted small mt-2" id="videoHint">اضغط + لاختيار فيديو (يجب ألا تتجاوز مدته 60 ثانية).</p>
+                <div class="video-duration-warning" id="videoDurationWarning">
+                    <i class="bi bi-exclamation-triangle"></i> مدة الفيديو تتجاوز 60 ثانية. يرجى قص الفيديو ثم إعادة اختياره.
+                </div>
+                <div class="video-duration-info" id="videoDurationInfo"></div>
             </div>
 
             <!-- الحقول الأساسية -->
@@ -245,12 +260,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (file && file.type.startsWith('image/')) {
                 const reader = new FileReader();
                 reader.onload = function(ev) {
-                    // إزالة البطاقة الحالية أو زر الإضافة
                     const existingCard = mainImageContainer.querySelector('.image-card');
                     if (existingCard) existingCard.remove();
                     const addBtn = mainImageContainer.querySelector('.add-image-card');
                     if (addBtn) addBtn.remove();
-
                     const div = document.createElement('div');
                     div.className = 'image-card';
                     div.innerHTML = `<img src="${ev.target.result}" alt="معاينة الصورة الأساسية"><button type="button" class="remove-image" data-action="remove-main">×</button>`;
@@ -258,7 +271,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 reader.readAsDataURL(file);
             }
-            // لا نقوم بتصفير الحقل هنا للحفاظ على الملف عند الإرسال
         });
     }
 
@@ -275,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const remaining = 4 - currentCount;
             if (remaining <= 0) {
                 showToast('لا يمكن إضافة أكثر من 4 صور فرعية', 'warning');
-                subImagesInput.value = ''; // تصفير فقط عند تجاوز الحد
+                subImagesInput.value = '';
                 return;
             }
             files.slice(0, remaining).forEach(f => {
@@ -290,32 +302,107 @@ document.addEventListener('DOMContentLoaded', function() {
                     reader.readAsDataURL(f);
                 }
             });
-            // لا نقوم بتصفير الحقل هنا للحفاظ على الملفات عند الإرسال
         });
     }
 
-    // الفيديو
+    // الفيديو + التحقق من المدة
     const videoInput = document.getElementById('videoInput');
     const addVideoBtn = document.getElementById('addVideoBtn');
     const videoContainer = document.getElementById('videoContainer');
+    const videoDurationWarning = document.getElementById('videoDurationWarning');
+    const videoDurationInfo = document.getElementById('videoDurationInfo');
+    const videoHint = document.getElementById('videoHint');
+    const productForm = document.getElementById('productForm');
+    let videoTooLong = false;
+
+    function checkVideoDuration(file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = function() {
+                URL.revokeObjectURL(url);
+                resolve(video.duration);
+            };
+            video.onerror = function() {
+                URL.revokeObjectURL(url);
+                reject(new Error('تعذر قراءة مدة الفيديو'));
+            };
+            video.src = url;
+        });
+    }
 
     if (videoInput && addVideoBtn && videoContainer) {
         addVideoBtn.addEventListener('click', () => videoInput.click());
-        videoInput.addEventListener('change', function(e) {
+
+        videoInput.addEventListener('change', async function(e) {
             const file = e.target.files[0];
-            if (file && file.type.startsWith('video/')) {
-                const reader = new FileReader();
-                reader.onload = function(ev) {
+            videoTooLong = false;
+            videoDurationWarning.style.display = 'none';
+            videoDurationInfo.style.display = 'none';
+
+            if (!file) return;
+
+            if (!file.type.startsWith('video/')) {
+                showToast('الرجاء اختيار ملف فيديو صالح', 'error');
+                videoInput.value = '';
+                return;
+            }
+
+            try {
+                const duration = await checkVideoDuration(file);
+                const minutes = Math.floor(duration / 60);
+                const seconds = Math.round(duration % 60);
+                const durationText = `${minutes > 0 ? minutes + ' دقيقة و' : ''}${seconds} ثانية`;
+
+                if (duration > 60) {
+                    videoTooLong = true;
+                    videoDurationWarning.style.display = 'block';
+                    videoHint.textContent = 'الفيديو أطول من 60 ثانية. يرجى قصه أولاً.';
+                    // إزالة المعاينة السابقة
                     const existing = videoContainer.querySelector('.video-card');
                     if (existing) existing.remove();
+                    const addBtn = videoContainer.querySelector('.add-video-card');
+                    if (addBtn) addBtn.remove();
+                    const div = document.createElement('div');
+                    div.className = 'add-video-card';
+                    div.id = 'addVideoBtn';
+                    div.innerHTML = '<i class="bi bi-plus"></i>';
+                    videoContainer.appendChild(div);
+                    div.addEventListener('click', () => videoInput.click());
+                    // تصفير الحقل
+                    videoInput.value = '';
+                    showToast('مدة الفيديو تتجاوز 60 ثانية', 'error');
+                } else {
+                    videoTooLong = false;
+                    videoDurationInfo.textContent = `مدة الفيديو: ${durationText} (مقبول)`;
+                    videoDurationInfo.style.display = 'block';
+                    videoHint.textContent = 'اضغط × لإزالة الفيديو الحالي.';
+                    // عرض المعاينة
+                    const existing = videoContainer.querySelector('.video-card');
+                    if (existing) existing.remove();
+                    const addBtn = videoContainer.querySelector('.add-video-card');
+                    if (addBtn) addBtn.remove();
                     const div = document.createElement('div');
                     div.className = 'video-card';
-                    div.innerHTML = `<video controls><source src="${ev.target.result}" type="${file.type}"></video><button type="button" class="remove-video">×</button>`;
+                    const videoUrl = URL.createObjectURL(file);
+                    div.innerHTML = `<video controls><source src="${videoUrl}" type="${file.type}"></video><button type="button" class="remove-video">×</button>`;
                     videoContainer.appendChild(div);
-                };
-                reader.readAsDataURL(file);
+                }
+            } catch (err) {
+                showToast('تعذر قراءة مدة الفيديو، يرجى اختيار ملف آخر', 'error');
+                videoInput.value = '';
             }
-            // لا نقوم بتصفير الحقل هنا للحفاظ على الملف عند الإرسال
+        });
+    }
+
+    // منع إرسال النموذج إذا كان الفيديو أطول من المسموح
+    if (productForm) {
+        productForm.addEventListener('submit', function(e) {
+            if (videoTooLong) {
+                e.preventDefault();
+                showToast('لا يمكن حفظ المنتج: مدة الفيديو تتجاوز 60 ثانية', 'error');
+            }
         });
     }
 
@@ -325,7 +412,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const action = e.target.dataset.action;
             const card = e.target.closest('.image-card');
             if (action === 'remove-main') {
-                // إذا كانت صورة أساسية موجودة مسبقًا، نضيف حقل مخفي
                 if (card && card.querySelector('img').src.includes('/static/uploads/')) {
                     const hidden = document.createElement('input');
                     hidden.type = 'hidden';
@@ -334,7 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.querySelector('form').appendChild(hidden);
                 }
                 if (card) card.remove();
-                // إظهار زر الإضافة إذا لم يتبق
                 if (!mainImageContainer.querySelector('.image-card') && !mainImageContainer.querySelector('.add-image-card')) {
                     const addDiv = document.createElement('div');
                     addDiv.className = 'add-image-card';
@@ -365,6 +450,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 hidden.value = 'yes';
                 document.querySelector('form').appendChild(hidden);
                 card.remove();
+                // إعادة تعيين حالة الفيديو
+                videoTooLong = false;
+                videoDurationWarning.style.display = 'none';
+                videoDurationInfo.style.display = 'none';
+                videoHint.textContent = 'اضغط + لاختيار فيديو (يجب ألا تتجاوز مدته 60 ثانية).';
+                videoInput.value = '';
                 if (!videoContainer.querySelector('.video-card') && !videoContainer.querySelector('.add-video-card')) {
                     const addDiv = document.createElement('div');
                     addDiv.className = 'add-video-card';
