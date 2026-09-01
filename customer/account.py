@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify
 from sqlalchemy.orm import joinedload
 from database import db
 import models
