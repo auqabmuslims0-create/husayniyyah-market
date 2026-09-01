@@ -332,8 +332,20 @@ def checkout(store_id):
     delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
     grand_total = product_total + delivery_fee
 
-    return render_template('customer/checkout.html', store=store, items=items,
-                           total=product_total, delivery_fee=delivery_fee, grand_total=grand_total)
+    # جلب جميع المتاجر النشطة ذات الإحداثيات لعرضها على الخريطة
+    all_stores = models.Store.query.filter(
+        models.Store.subscription_status == 'active',
+        models.Store.latitude.isnot(None),
+        models.Store.longitude.isnot(None)
+    ).all()
+
+    return render_template('customer/checkout.html',
+                           store=store,
+                           items=items,
+                           total=product_total,
+                           delivery_fee=delivery_fee,
+                           grand_total=grand_total,
+                           all_stores=all_stores)
 
 @cart_bp.route('/cart/checkout/<int:store_id>', methods=['POST'])
 @login_required

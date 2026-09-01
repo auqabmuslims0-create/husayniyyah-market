@@ -107,6 +107,25 @@
         background: #1e1e1e;
         color: #fff;
     }
+    /* نمط علامة المتجر على الخريطة */
+    .store-marker-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: var(--primary);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    body.dark-mode .store-marker-icon {
+        background: #1e1e1e;
+        border-color: var(--accent);
+        color: var(--accent);
+    }
 </style>
 {% endblock %}
 
@@ -225,10 +244,10 @@
 {% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // ===== تحديث الكمية =====
     const csrfToken = "{{ csrf_token }}";
     const deliveryFee = parseFloat("{{ delivery_fee }}");
 
+    // تحديث الكمية
     async function updateQuantity(productId, newQty) {
         if (newQty < 1) return;
         try {
@@ -256,28 +275,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateCartBadges(data.cart_count);
                 }
             } else {
-                showToast(data.message || 'تعذر التحديث', 'danger');
+                showToast(data.message || 'تعذر التحديث', 'error');
             }
         } catch (err) {
             console.error(err);
-            showToast('حدث خطأ', 'danger');
+            showToast('حدث خطأ', 'error');
         }
     }
 
     async function updateTotals() {
-        try {
-            let newTotal = 0;
-            document.querySelectorAll('.item-subtotal').forEach(span => {
-                const text = span.textContent.replace(/[^\d.-]/g, '');
-                const value = parseFloat(text);
-                if (!isNaN(value)) newTotal += value;
-            });
-            document.getElementById('totalPrice').textContent = `${newTotal.toLocaleString('en-US')} ل.س`;
-            const grand = newTotal + deliveryFee;
-            document.getElementById('grandTotal').textContent = `${grand.toLocaleString('en-US')} ل.س`;
-        } catch (err) {
-            console.error(err);
-        }
+        let newTotal = 0;
+        document.querySelectorAll('.item-subtotal').forEach(span => {
+            const text = span.textContent.replace(/[^\d.-]/g, '');
+            const value = parseFloat(text);
+            if (!isNaN(value)) newTotal += value;
+        });
+        document.getElementById('totalPrice').textContent = `${newTotal.toLocaleString('en-US')} ل.س`;
+        const grand = newTotal + deliveryFee;
+        document.getElementById('grandTotal').textContent = `${grand.toLocaleString('en-US')} ل.س`;
     }
 
     document.querySelectorAll('.quantity-btn').forEach(btn => {
@@ -293,12 +308,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ===== الخريطة =====
+    // الخريطة
     {% if store.has_delivery %}
     const map = L.map('checkoutMap').setView([35.0, 36.5], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
+
+    // إضافة علامات المتاجر
+    {% for s in all_stores %}
+        {% if s.latitude and s.longitude %}
+        L.marker([{{ s.latitude }}, {{ s.longitude }}], {
+            icon: L.divIcon({
+                className: '',
+                html: '<div class="store-marker-icon"><i class="bi bi-shop"></i></div>',
+                iconSize: [36, 36],
+                iconAnchor: [18, 18],
+                popupAnchor: [0, -18]
+            })
+        }).addTo(map).bindPopup('<strong>{{ s.name }}</strong>');
+        {% endif %}
+    {% endfor %}
 
     let marker = null;
 
@@ -333,11 +363,11 @@ document.addEventListener('DOMContentLoaded', function() {
         {% if store.latitude and store.longitude %}
         setMarker({{ store.latitude }}, {{ store.longitude }});
         {% endif %}
-        showToast('متصفحك لا يدعم تحديد الموقع', 'danger');
+        showToast('متصفحك لا يدعم تحديد الموقع', 'error');
     }
     {% endif %}
 
-    // ===== نافذة التأكيد =====
+    // نافذة التأكيد
     const confirmBtn = document.getElementById('confirmOrderBtn');
     const agreeBtn = document.getElementById('agreeBtn');
     const modal = new bootstrap.Modal(document.getElementById('deliveryFeeModal'));
@@ -354,17 +384,13 @@ document.addEventListener('DOMContentLoaded', function() {
     agreeBtn.addEventListener('click', function() {
         modal.hide();
         if (navigator.onLine) {
-            // الاتصال متاح: إرسال النموذج مباشرة
             document.getElementById('checkoutForm').submit();
         } else {
-            // غير متصل: حفظ الطلب محلياً
             saveOrderOffline();
         }
     });
 
-    // دالة حفظ الطلب دون اتصال
     function saveOrderOffline() {
-        // تجميع البيانات من النموذج
         const form = document.getElementById('checkoutForm');
         const storeId = {{ store.id }};
         const items = [];
@@ -391,7 +417,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (typeof OfflineDB !== 'undefined') {
             OfflineDB.savePendingOrder(orderData).then(() => {
                 showToast('تم حفظ الطلب محلياً وسيتم إرساله عند الاتصال', 'info');
-                // تنظيف السلة المحلية (اختياري)
                 if (typeof LocalStore !== 'undefined') {
                     LocalStore.setCart({});
                     LocalStore.updateCartBadges();
@@ -401,10 +426,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 1500);
             }).catch(err => {
                 console.error(err);
-                showToast('حدث خطأ في حفظ الطلب محلياً', 'danger');
+                showToast('حدث خطأ في حفظ الطلب محلياً', 'error');
             });
         } else {
-            showToast('لا يمكن حفظ الطلب دون اتصال', 'danger');
+            showToast('لا يمكن حفظ الطلب دون اتصال', 'error');
         }
     }
 });
