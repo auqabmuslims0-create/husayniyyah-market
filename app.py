@@ -59,6 +59,7 @@ csp_policy = (
     "script-src 'self' 'unsafe-inline' https://unpkg.com; "
     "font-src 'self'; "
     "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com https://res.cloudinary.com; "
+    "media-src 'self' https://res.cloudinary.com; "
     "frame-src 'self'"
 )
 Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_ENV') == 'production')
