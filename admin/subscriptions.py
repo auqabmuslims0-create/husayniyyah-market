@@ -27,7 +27,7 @@ def admin_subscriptions():
                 models.Subscription.user.has(models.User.username.ilike(f'%{q}%'))
             )
         )
-    if status_filter in ['pending', 'paid', 'cancelled', 'expired']:
+    if status_filter in ['pending', 'paid', 'cancelled', 'expired', 'suspended']:
         query = query.filter(models.Subscription.status == status_filter)
 
     pagination = query.order_by(models.Subscription.start_date.desc()).paginate(page=page, per_page=per_page, error_out=False)

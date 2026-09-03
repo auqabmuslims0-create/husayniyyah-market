@@ -1,24 +1,30 @@
+import logging
+import os
+import random
+import string
+import secrets
+from datetime import timedelta
 from database import db
 import models
 from flask import url_for
 from time_utils import current_time
 from utils import save_image, get_upload_path, get_setting
-from datetime import timedelta
 from services.payment_service import PaymentService
 from services.notification_service import NotificationService
-import os
-import random
-import string
-import secrets
+
+logger = logging.getLogger(__name__)
+
 
 class SubscriptionService:
     @staticmethod
-    def approve_subscription(sub_id):
-        sub = models.Subscription.query.get_or_404(sub_id)
+    def _activate_subscription(sub):
+        """تفعيل الاشتراك: تحديث الحالة والتواريخ والمتجر والمدفوعات."""
         try:
             sub.status = 'paid'
             sub.start_date = current_time()
-            sub.end_date = current_time() + timedelta(days=30)
+            sub.end_date = current_time() + timedelta(days=sub.duration_days or 30)
+            sub.confirmation_attempts = 0
+            sub.confirmation_expiry = None
             db.session.add(sub)
 
             if sub.store_id:
@@ -28,28 +34,41 @@ class SubscriptionService:
                     store.subscription_expiry = sub.end_date
                     db.session.add(store)
 
+            # تحديث المدفوعات المرتبطة إلى paid
+            payments = models.Payment.query.filter_by(subscription_id=sub.id, status='pending').all()
+            for p in payments:
+                p.status = 'paid'
+                db.session.add(p)
+
+            # إرسال إشعار لصاحب المتجر
             if sub.user:
                 NotificationService.send_to_user(
                     user_id=sub.user.id,
-                    message='تم تفعيل اشتراك متجرك بنجاح',
-                    link=f'/store/{sub.store_id}' if sub.store_id else '/dashboard',
+                    title='تم تفعيل الاشتراك',
+                    message=f'تم تفعيل اشتراك متجرك "{sub.store.name}" بنجاح حتى {sub.end_date.strftime("%Y-%m-%d")}.',
+                    link=url_for('store.store_subscription', store_id=sub.store_id) if sub.store_id else url_for('dashboard'),
                     type_=NotificationService.TYPE_SUBSCRIPTION,
                     priority=NotificationService.PRIORITY_IMPORTANT
                 )
 
-            payments = models.Payment.query.filter_by(subscription_id=sub.id).all()
-            for p in payments:
-                if p.status == 'pending':
-                    p.status = 'paid'
-
             db.session.commit()
-            return True, 'تمت الموافقة على الاشتراك'
+            return True, 'تم تفعيل الاشتراك بنجاح'
         except Exception as e:
             db.session.rollback()
-            return False, 'حدث خطأ أثناء الموافقة على الاشتراك'
+            logger.error(f"خطأ في تفعيل الاشتراك {sub.id}: {str(e)}")
+            return False, 'حدث خطأ أثناء تفعيل الاشتراك'
+
+    @staticmethod
+    def approve_subscription(sub_id):
+        """موافقة الإدارة على اشتراك قيد الانتظار."""
+        sub = models.Subscription.query.get_or_404(sub_id)
+        if sub.status != 'pending':
+            return False, 'الاشتراك ليس قيد الانتظار'
+        return SubscriptionService._activate_subscription(sub)
 
     @staticmethod
     def reject_subscription(sub_id):
+        """رفض طلب اشتراك قيد الانتظار."""
         sub = models.Subscription.query.get_or_404(sub_id)
         try:
             sub.status = 'cancelled'
@@ -65,25 +84,29 @@ class SubscriptionService:
             if sub.user:
                 NotificationService.send_to_user(
                     user_id=sub.user.id,
-                    message='تم رفض طلب اشتراك المتجر، يرجى التواصل مع الإدارة',
-                    link=f'/store/{sub.store_id}/subscription' if sub.store_id else '/dashboard',
+                    title='تم رفض الاشتراك',
+                    message='تم رفض طلب اشتراك متجرك. يرجى التواصل مع الإدارة لمزيد من التفاصيل.',
+                    link=url_for('store.store_subscription', store_id=sub.store_id) if sub.store_id else url_for('dashboard'),
                     type_=NotificationService.TYPE_SUBSCRIPTION,
                     priority=NotificationService.PRIORITY_URGENT
                 )
 
-            payments = models.Payment.query.filter_by(subscription_id=sub.id).all()
+            # تحديث المدفوعات المعلقة إلى failed
+            payments = models.Payment.query.filter_by(subscription_id=sub.id, status='pending').all()
             for p in payments:
-                if p.status == 'pending':
-                    p.status = 'failed'
+                p.status = 'failed'
+                db.session.add(p)
 
             db.session.commit()
-            return True, 'تم رفض طلب الاشتراك'
-        except Exception:
+            return True, 'تم رفض الاشتراك'
+        except Exception as e:
             db.session.rollback()
+            logger.error(f"خطأ في رفض الاشتراك {sub.id}: {str(e)}")
             return False, 'حدث خطأ أثناء رفض الاشتراك'
 
     @staticmethod
     def check_expiring_subscriptions(days=3):
+        """إرسال إشعارات للاشتراكات التي ستنتهي خلال أيام محددة."""
         threshold = current_time() + timedelta(days=days)
         expiring_subs = models.Subscription.query.filter(
             models.Subscription.status == 'paid',
@@ -110,43 +133,105 @@ class SubscriptionService:
         return len(expiring_subs)
 
     @staticmethod
+    def expire_subscriptions():
+        """تحويل الاشتراكات المنتهية إلى expired وتحديث حالة المتجر إلى expired."""
+        now = current_time()
+        expired_subs = models.Subscription.query.filter(
+            models.Subscription.status == 'paid',
+            models.Subscription.end_date <= now
+        ).all()
+
+        count = 0
+        for sub in expired_subs:
+            try:
+                sub.status = 'expired'
+                db.session.add(sub)
+
+                if sub.store_id:
+                    store = db.session.get(models.Store, sub.store_id)
+                    if store:
+                        store.subscription_status = 'expired'
+                        store.subscription_expiry = sub.end_date
+                        db.session.add(store)
+
+                if sub.user:
+                    NotificationService.send_to_user(
+                        user_id=sub.user.id,
+                        title='انتهاء الاشتراك',
+                        message=f'انتهى اشتراك متجرك "{sub.store.name}". يرجى التجديد لاستئناف الخدمة.',
+                        link=url_for('store.store_subscription', store_id=sub.store_id) if sub.store_id else url_for('dashboard'),
+                        type_=NotificationService.TYPE_SUBSCRIPTION,
+                        priority=NotificationService.PRIORITY_URGENT
+                    )
+                count += 1
+            except Exception as e:
+                logger.error(f"خطأ في معالجة الاشتراك المنتهي {sub.id}: {str(e)}")
+                db.session.rollback()
+        if count > 0:
+            try:
+                db.session.commit()
+            except Exception as e:
+                logger.error(f"فشل حفظ تغييرات الاشتراكات المنتهية: {str(e)}")
+                db.session.rollback()
+        return count
+
+    @staticmethod
     def submit_subscription_request(user, store, payment_ref=None, proof_file=None, payment_method='wallet'):
+        """تقديم طلب اشتراك جديد أو تحديث طلب معلق."""
         try:
             subscription_price = float(get_setting('subscription_price', 500))
+            duration_days = int(get_setting('subscription_duration_days', 30))
         except (TypeError, ValueError):
             subscription_price = 500.0
+            duration_days = 30
 
         # التحقق من ملكية المتجر
         if store.owner_id != user.id:
             return False, 'غير مسموح لك بتقديم طلب اشتراك لهذا المتجر', None
 
-        sub = models.Subscription.query.filter_by(store_id=store.id, status='pending').first()
+        # البحث عن اشتراك نشط أو معلق
+        active_sub = models.Subscription.query.filter_by(
+            store_id=store.id, status='paid'
+        ).filter(models.Subscription.end_date > current_time()).first()
 
-        if sub and sub.status == 'paid' and sub.end_date > current_time():
-            return False, 'اشتراكك نشط، يمكنك التجديد عند انتهائه', None
+        if active_sub:
+            return False, 'لديك اشتراك نشط بالفعل. يمكنك التجديد عند انتهائه.', None
 
+        pending_sub = models.Subscription.query.filter_by(
+            store_id=store.id, status='pending'
+        ).order_by(models.Subscription.start_date.desc()).first()
+
+        # إنشاء أو تحديث الاشتراك المعلق
+        sub = pending_sub
         if not sub:
             sub = models.Subscription(
                 user_id=user.id,
                 store_id=store.id,
                 start_date=current_time(),
-                end_date=current_time() + timedelta(days=30),
+                end_date=current_time() + timedelta(days=duration_days),
                 amount=subscription_price,
                 status='pending',
-                payment_ref=None
+                payment_method=payment_method,
+                duration_days=duration_days,
+                renewal_count=0
             )
             db.session.add(sub)
+        else:
+            # تحديث الاشتراك المعلق
+            sub.amount = subscription_price
+            sub.start_date = current_time()
+            sub.payment_method = payment_method
+            sub.duration_days = duration_days
+            db.session.add(sub)
 
-        sub.amount = subscription_price
-        sub.start_date = current_time()
         sub.status = 'pending'
-        sub.payment_method = payment_method
 
         try:
             if payment_method == 'manual_delivery':
-                sub.payment_ref = None
+                # إعداد كود التأكيد للتسليم اليدوي
                 if not sub.confirmation_code:
                     sub.confirmation_code = ''.join(secrets.choice('0123456789') for _ in range(6))
+                # إلغاء أي صورة إثبات سابقة
                 if sub.proof_image:
                     old_proof = get_upload_path(sub.proof_image)
                     if old_proof and os.path.exists(old_proof):
@@ -155,8 +240,12 @@ class SubscriptionService:
                         except Exception:
                             pass
                     sub.proof_image = None
+                sub.payment_ref = None
+                # إعادة تعيين محاولات التأكيد
+                sub.confirmation_attempts = 0
+                sub.confirmation_expiry = current_time() + timedelta(hours=24)  # صلاحية الكود 24 ساعة
 
-                # البحث عن دفع معلق قائم لهذا الاشتراك لتحديثه بدلاً من إنشاء جديد
+                # تحديث أو إنشاء دفع معلق
                 existing_payment = models.Payment.query.filter_by(
                     subscription_id=sub.id,
                     status='pending',
@@ -184,9 +273,12 @@ class SubscriptionService:
                         raise ValueError(f'تعذر تسجيل الدفع: {err}')
 
             else:
+                # طرق الدفع الإلكترونية (wallet, bank_transfer)
                 if not payment_ref:
                     raise ValueError('يجب إدخال رقم العملية')
                 sub.payment_ref = payment_ref
+
+                # حفظ صورة الإثبات إن وجدت
                 if proof_file and proof_file.filename != '':
                     new_proof = save_image(proof_file)
                     if new_proof:
@@ -199,7 +291,7 @@ class SubscriptionService:
                                     pass
                         sub.proof_image = new_proof
 
-                # البحث عن دفع معلق قائم لهذا الاشتراك
+                # تحديث أو إنشاء دفع معلق
                 existing_payment = models.Payment.query.filter_by(
                     subscription_id=sub.id,
                     status='pending'
@@ -230,10 +322,12 @@ class SubscriptionService:
             return True, 'تم إرسال طلب الاشتراك بنجاح', sub
         except Exception as e:
             db.session.rollback()
+            logger.error(f"خطأ في تقديم طلب الاشتراك للمتجر {store.id}: {str(e)}")
             return False, str(e), None
 
     @staticmethod
     def verify_manual_confirmation(user, sub_id, code):
+        """التحقق من كود التأكيد للتسليم اليدوي وتفعيل الاشتراك."""
         sub = models.Subscription.query.get_or_404(sub_id)
         if sub.user_id != user.id:
             return False, 'غير مسموح'
@@ -241,29 +335,21 @@ class SubscriptionService:
             return False, 'طريقة الدفع غير صحيحة'
         if sub.status != 'pending':
             return False, 'الاشتراك ليس قيد الانتظار'
-        if not sub.confirmation_code or sub.confirmation_code != code.strip():
-            return False, 'كود التأكيد غير صحيح'
-
-        try:
-            sub.status = 'paid'
-            sub.start_date = current_time()
-            sub.end_date = current_time() + timedelta(days=30)
+        if not sub.confirmation_code:
+            return False, 'لا يوجد كود تأكيد'
+        if sub.confirmation_attempts >= 5:
+            return False, 'تم تجاوز الحد الأقصى لمحاولات التأكيد. يرجى التواصل مع الإدارة.'
+        if sub.confirmation_expiry and sub.confirmation_expiry < current_time():
+            return False, 'انتهت صلاحية كود التأكيد. يرجى إعادة الطلب.'
+        if sub.confirmation_code != code.strip():
+            # زيادة عدد المحاولات
+            sub.confirmation_attempts += 1
             db.session.add(sub)
-
-            if sub.store_id:
-                store = db.session.get(models.Store, sub.store_id)
-                if store:
-                    store.subscription_status = 'active'
-                    store.subscription_expiry = sub.end_date
-                    db.session.add(store)
-
-            payments = models.Payment.query.filter_by(subscription_id=sub.id).all()
-            for p in payments:
-                if p.status == 'pending':
-                    p.status = 'paid'
-
             db.session.commit()
-            return True, 'تم تفعيل اشتراك متجرك بنجاح'
-        except Exception:
-            db.session.rollback()
-            return False, 'حدث خطأ أثناء التفعيل'
+            remaining = 5 - sub.confirmation_attempts
+            if remaining <= 0:
+                return False, 'تم تجاوز الحد الأقصى للمحاولات. يرجى التواصل مع الإدارة.'
+            return False, f'كود التأكيد غير صحيح. تبقى {remaining} محاولات.'
+
+        # الكود صحيح، تفعيل الاشتراك
+        return SubscriptionService._activate_subscription(sub)

@@ -1,8 +1,7 @@
-# ملاحظة: هذا الملف كامل كما كان مع إضافة الحقلين في كلاس Notification
 from datetime import datetime
 from database import db
 from time_utils import current_time
-from sqlalchemy import UniqueConstraint, CheckConstraint
+from sqlalchemy import UniqueConstraint, CheckConstraint, Index
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -58,7 +57,7 @@ class Store(db.Model):
 
     __table_args__ = (
         CheckConstraint(
-            "subscription_status IN ('pending', 'active', 'suspended', 'cancelled')",
+            "subscription_status IN ('pending', 'active', 'suspended', 'cancelled', 'expired')",
             name='ck_store_subscription_status_valid'
         ),
     )
@@ -358,18 +357,23 @@ class Subscription(db.Model):
     proof_image = db.Column(db.String(300), nullable=True)
     payment_method = db.Column(db.String(30), default='manual_delivery')
     confirmation_code = db.Column(db.String(20), nullable=True)
+    confirmation_attempts = db.Column(db.Integer, default=0)
+    confirmation_expiry = db.Column(db.DateTime, nullable=True)
     expiry_notified = db.Column(db.Boolean, default=False)
+    duration_days = db.Column(db.Integer, default=30)
+    renewal_count = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=current_time)
 
     __table_args__ = (
         CheckConstraint('amount >= 0', name='ck_subscription_amount_non_negative'),
-        CheckConstraint("status IN ('pending', 'paid', 'cancelled', 'expired')", name='ck_subscription_status_valid'),
+        CheckConstraint("status IN ('pending', 'paid', 'cancelled', 'expired', 'suspended')", name='ck_subscription_status_valid'),
         CheckConstraint('(user_id IS NOT NULL) OR (store_id IS NOT NULL)', name='ck_subscription_user_or_store'),
         CheckConstraint(
             "payment_method IN ('cash', 'wallet', 'bank_transfer', 'manual_delivery')",
             name='ck_subscription_payment_method_valid'
         ),
-        db.Index('ix_subscription_store_status', 'store_id', 'status'),
-        db.Index('ix_subscription_end_date', 'end_date'),
+        Index('ix_subscription_store_status', 'store_id', 'status'),
+        Index('ix_subscription_end_date', 'end_date'),
     )
 
     user = db.relationship('User', back_populates='subscriptions', foreign_keys=[user_id])

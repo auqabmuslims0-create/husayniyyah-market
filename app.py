@@ -335,5 +335,13 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     ensure_admin()
+    from scheduler import init_scheduler
+    init_scheduler(app)
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(host='0.0.0.0', port=5000, debug=debug_mode)
+
+# تشغيل المجدول عند استيراد التطبيق في بيئة الإنتاج (مثل gunicorn)
+if os.environ.get('SCHEDULER_ENABLED') == '1':
+    from scheduler import init_scheduler
+    with app.app_context():
+        init_scheduler(app)

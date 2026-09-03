@@ -170,6 +170,7 @@
                 <option value="paid" {% if status_filter == 'paid' %}selected{% endif %}>مدفوع</option>
                 <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>ملغي</option>
                 <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>منتهي</option>
+                <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>موقوف</option>
             </select>
             <input type="text" name="q" value="{{ q }}" placeholder="بحث برقم العملية أو اسم المتجر أو المالك">
             <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">بحث</button>
@@ -187,10 +188,11 @@
                         aria-expanded="false"
                         aria-controls="subCollapse{{ sub.id }}">
                     <span class="fw-bold me-2">{{ sub.store.name if sub.store else 'متجر محذوف' }}</span>
-                    <span class="badge {% if sub.status == 'paid' %}bg-success{% elif sub.status == 'pending' %}bg-warning text-dark{% elif sub.status == 'expired' %}bg-secondary{% else %}bg-danger{% endif %} rounded-pill">
+                    <span class="badge {% if sub.status == 'paid' %}bg-success{% elif sub.status == 'pending' %}bg-warning text-dark{% elif sub.status == 'expired' %}bg-secondary{% elif sub.status == 'suspended' %}bg-dark{% else %}bg-danger{% endif %} rounded-pill">
                         {% if sub.status == 'paid' %}مدفوع
                         {% elif sub.status == 'pending' %}قيد الانتظار
                         {% elif sub.status == 'expired' %}منتهي
+                        {% elif sub.status == 'suspended' %}موقوف
                         {% else %}ملغي{% endif %}
                     </span>
                     <span class="ms-auto text-muted small">{{ sub.amount|format_price }} ل.س</span>
@@ -206,6 +208,8 @@
                         <div class="detail-item"><i class="bi bi-receipt"></i><strong>رقم العملية:</strong> {{ sub.payment_ref or 'غير مدخل' }}</div>
                         <div class="detail-item"><i class="bi bi-calendar-check"></i><strong>تاريخ البداية:</strong> {{ sub.start_date.strftime('%Y-%m-%d') if sub.start_date else '-' }}</div>
                         <div class="detail-item"><i class="bi bi-calendar-x"></i><strong>تاريخ النهاية:</strong> {{ sub.end_date.strftime('%Y-%m-%d') if sub.end_date else '-' }}</div>
+                        <div class="detail-item"><i class="bi bi-arrow-repeat"></i><strong>عدد التجديدات:</strong> {{ sub.renewal_count }}</div>
+                        <div class="detail-item"><i class="bi bi-clock"></i><strong>المدة:</strong> {{ sub.duration_days }} يوم</div>
                     </div>
 
                     {% if sub.payment_method == 'manual_delivery' and sub.confirmation_code %}
