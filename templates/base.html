@@ -164,7 +164,6 @@
       font-size: 1.2rem;
       flex-shrink: 0;
     }
-    /* نقطة التنبيه فوق زر البرغر */
     .notification-dot {
       position: absolute;
       top: 8px;
@@ -317,6 +316,8 @@
 
   <script>
     var csrfToken = "{{ csrf_token }}";
+    // تعيين حالة المصادقة حتى لا يحاول LocalStore مزامنة الثيم إذا لم يكن مسجلاً
+    window.isAuthenticated = {{ 'true' if current_user else 'false' }};
 
     function showToast(message, type = 'info', image = null) {
       if (type === 'danger') type = 'error';
@@ -357,7 +358,16 @@
     }
 
     async function toggleFavoriteProduct(productId, btnElement) {
-        LocalStore.toggleFavorite('product', productId);
+        // نمرر بيانات المنتج إذا كانت متاحة في العنصر
+        const productData = {
+            id: productId,
+            name: btnElement.dataset.name || '',
+            price: btnElement.dataset.price || 0,
+            image: btnElement.dataset.image || '',
+            store_id: btnElement.dataset.storeId || null,
+            store_name: btnElement.dataset.storeName || ''
+        };
+        LocalStore.toggleFavorite('product', productId, productData);
         const icon = btnElement.querySelector('i');
         if (icon) {
             if (icon.classList.contains('bi-heart')) {
@@ -417,12 +427,13 @@
     window.addEventListener('offline', updateConnectionStatus);
     updateConnectionStatus();
 
+    // طلب إذن الإشعارات: لن نقوم بطلبه تلقائياً، بل ننتظر تفاعل المستخدم
+    // يمكن إضافة زر في مكان ما لاستدعاء هذه الوظيفة
     function requestNotificationPermission() {
       if (!('Notification' in window)) return;
       if (Notification.permission === 'granted') return;
       if (Notification.permission === 'denied') return;
-      if (localStorage.getItem('notifPermissionAsked') === 'true') return;
-      localStorage.setItem('notifPermissionAsked', 'true');
+      // لا نطلب الإذن تلقائياً، فقط عند طلب المستخدم
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
           showToast('تم تفعيل الإشعارات', 'success');
@@ -479,7 +490,8 @@
       });
 
       LocalStore.updateCartBadges();
-      requestNotificationPermission();
+      // لا نطلب إذن الإشعارات تلقائياً
+      // requestNotificationPermission();
 
       LocalStore.updateThemeButton();
       const themeBtn = document.getElementById('sidebarThemeToggle');
@@ -493,8 +505,10 @@
 
     // ====== منطق التحديث الدوري للإشعارات ======
     let lastUnreadCount = {{ unread_notifications if unread_notifications is not none else 0 }};
+    let updateInterval = null;
 
     function fetchUpdates() {
+      if (!navigator.onLine) return; // لا تحاول إذا كان غير متصل
       fetch('/api/updates', {headers: {'Accept': 'application/json'}})
       .then(res => res.json())
       .then(data => {
@@ -512,13 +526,11 @@
           if (dot) dot.style.display = 'none';
         }
 
-        // إظهار توست عند وصول إشعار جديد
         if (unreadCount > lastUnreadCount) {
           showToast('لديك إشعار جديد', 'info');
         }
         lastUnreadCount = unreadCount;
 
-        // تنبيهات الأدوار
         if (data.new_orders_count > 0) {
           showToast('لديك ' + data.new_orders_count + ' طلب جديد بانتظار التأكيد', 'info');
         }
@@ -531,38 +543,42 @@
       })
       .catch(err => console.log('Update fetch failed', err));
     }
-    setInterval(fetchUpdates, 15000);
-    fetchUpdates();
-  </script>
 
-  <script>
+    function startUpdateInterval() {
+      if (updateInterval) clearInterval(updateInterval);
+      if (navigator.onLine) {
+        fetchUpdates(); // مرة فورية
+        updateInterval = setInterval(fetchUpdates, 15000);
+      }
+    }
+
+    function stopUpdateInterval() {
+      if (updateInterval) {
+        clearInterval(updateInterval);
+        updateInterval = null;
+      }
+    }
+
+    window.addEventListener('online', startUpdateInterval);
+    window.addEventListener('offline', stopUpdateInterval);
+
+    startUpdateInterval();
+
+    // ====== تسجيل Service Worker ======
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       window.addEventListener('load', async () => {
         try {
           const registration = await navigator.serviceWorker.register('/sw.js');
           console.log('Service Worker registered');
-          const permission = await Notification.requestPermission();
-          if (permission === 'granted') {
-            const vapidResponse = await fetch('/api/notifications/push/vapid_public_key');
-            const vapidData = await vapidResponse.json();
-            const vapidPublicKey = vapidData.public_key;
-            const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
-            const subscription = await registration.pushManager.subscribe({
-              userVisibleOnly: true,
-              applicationServerKey: convertedVapidKey
-            });
-            await fetch('/api/notifications/push/subscribe', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': window.csrfToken
-              },
-              body: JSON.stringify({ subscription: subscription.toJSON() })
-            });
-            console.log('Push subscription sent');
+          // لا نطلب إذن الإشعارات هنا، بل ننتظر تفاعل المستخدم
+          // لكن يمكننا التحقق من الاشتراك الحالي
+          const existingSubscription = await registration.pushManager.getSubscription();
+          if (existingSubscription) {
+            // الاشتراك موجود، لا داعي لطلب إذن جديد
+            console.log('Push subscription already exists');
           }
         } catch (err) {
-          console.error('Service Worker or push subscription failed', err);
+          console.error('Service Worker registration failed', err);
         }
       });
     }
@@ -577,6 +593,35 @@
       }
       return outputArray;
     }
+
+    // وظيفة لتفعيل الإشعارات (يمكن استدعاؤها من زر)
+    window.enablePushNotifications = async function() {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const vapidResponse = await fetch('/api/notifications/push/vapid_public_key');
+          const vapidData = await vapidResponse.json();
+          const vapidPublicKey = vapidData.public_key;
+          const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+          });
+          await fetch('/api/notifications/push/subscribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': window.csrfToken
+            },
+            body: JSON.stringify({ subscription: subscription.toJSON() })
+          });
+          showToast('تم تفعيل الإشعارات بنجاح', 'success');
+        }
+      } catch (err) {
+        console.error('Push subscription failed', err);
+      }
+    };
   </script>
 
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">

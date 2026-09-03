@@ -1,7 +1,8 @@
 /**
  * LocalStore - إدارة السلة والمفضلة والملف الشخصي والوضع الداكن محلياً مع مزامنة خادم
  * يعتمد على OfflineDB لتخزين بيانات المنتجات والمتاجر في IndexedDB
- * تم تحسين sync بإضافة debounce لتقليل الطلبات المتكررة.
+ * تم تحسين sync بإضافة debounce وتقليل الطلبات المتكررة،
+ * مع تطبيع البيانات قبل التخزين.
  */
 const LocalStore = (function() {
     const CART_KEY = 'local_cart';
@@ -27,7 +28,6 @@ const LocalStore = (function() {
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const isDark = theme === 'dark' || (theme === 'system' && prefersDark);
 
-        // نطبق على html و body معًا
         document.documentElement.classList.toggle('dark-mode', isDark);
         if (document.body) {
             document.body.classList.toggle('dark-mode', isDark);
@@ -38,7 +38,7 @@ const LocalStore = (function() {
         localStorage.setItem(THEME_KEY, theme);
         applyTheme(theme);
         // مزامنة مع الخادم إذا كان المستخدم مسجلاً
-        if (window.csrfToken) {
+        if (window.csrfToken && window.isAuthenticated !== false) {
             const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
             fetch('/account/theme', {
                 method: 'POST',
@@ -103,6 +103,7 @@ const LocalStore = (function() {
     function setProductsCache(cache) { localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(cache)); }
 
     function cacheProduct(product) {
+        if (!product || !product.id) return;
         const cache = getProductsCache();
         cache[product.id] = {
             id: product.id,
@@ -193,6 +194,11 @@ const LocalStore = (function() {
                     } else {
                         const data = await response.json().catch(() => ({}));
                         console.warn('فشل إرسال الطلب المعلق:', data.message || response.status);
+                        // إذا كان الخطأ يتعلق بـ CSRF (403) نتوقف عن إعادة المحاولة حتى تحديث التوكن
+                        if (response.status === 403) {
+                            console.warn('CSRF token expired، توقف المزامنة');
+                            break;
+                        }
                     }
                 } catch (err) {
                     console.warn('خطأ في إرسال الطلب المعلق:', err);
@@ -210,18 +216,24 @@ const LocalStore = (function() {
             const cart = getCart();
             const favs = getFavorites();
             const csrfToken = window.csrfToken || '';
+
+            // مزامنة السلة والمفضلة والملف الشخصي
             await fetch('/api/cart/sync', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
                 body: JSON.stringify({ cart })
-            });
+            }).catch(err => console.warn('Cart sync failed:', err));
+
             await fetch('/api/favorites/sync', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
                 body: JSON.stringify({ favorites: favs })
-            });
+            }).catch(err => console.warn('Favorites sync failed:', err));
+
             const profile = getProfile();
-            if (profile) await syncProfile(profile);
+            if (profile) {
+                await syncProfile(profile);
+            }
         } catch (err) {
             console.log('Local sync failed:', err);
         } finally {
@@ -281,8 +293,9 @@ const LocalStore = (function() {
         const favs = getFavorites();
         const key = type === 'product' ? 'products' : 'stores';
         const index = favs[key].indexOf(id);
-        if (index > -1) favs[key].splice(index, 1);
-        else {
+        if (index > -1) {
+            favs[key].splice(index, 1);
+        } else {
             favs[key].push(id);
             if (itemData && type === 'product') cacheProduct(itemData);
             else if (itemData && type === 'store') cacheStore(itemData);
@@ -297,6 +310,7 @@ const LocalStore = (function() {
         return favs[key].includes(id);
     }
 
+    // الاستماع لعودة الاتصال
     window.addEventListener('online', () => {
         if (debounceTimer) {
             clearTimeout(debounceTimer);

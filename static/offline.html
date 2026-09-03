@@ -31,7 +31,7 @@
       border-radius: 25px;
       padding: 40px 30px;
       text-align: center;
-      max-width: 400px;
+      max-width: 420px;
       width: 100%;
       box-shadow: 0 12px 28px rgba(0,0,0,0.08);
       transition: transform 0.2s;
@@ -101,6 +101,46 @@
     body.dark-mode .retry-btn:hover {
       background: #b8941f;
     }
+    .cached-pages {
+      margin-top: 25px;
+      text-align: right;
+    }
+    .cached-pages h2 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+      color: var(--text-light);
+    }
+    body.dark-mode .cached-pages h2 {
+      color: #fff;
+    }
+    .cached-pages ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .cached-pages li a {
+      display: inline-block;
+      background: rgba(46,93,52,0.05);
+      color: var(--text-light);
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      border: 1px solid rgba(0,0,0,0.05);
+      transition: background 0.2s;
+    }
+    body.dark-mode .cached-pages li a {
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      border-color: #333;
+    }
+    .cached-pages li a:hover {
+      background: rgba(46,93,52,0.1);
+    }
     svg {
       display: inline-block;
       vertical-align: middle;
@@ -116,7 +156,6 @@
 <body>
   <div class="offline-card">
     <div class="icon-wrapper">
-      <!-- أيقونة Wi-Fi مقطوعة SVG مدمجة -->
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" fill="currentColor"/>
         <path d="M8.5 15.5a4.5 4.5 0 0 1 7 0l-1.4 1.4a2.5 2.5 0 0 0-4.2 0l-1.4-1.4z" fill="currentColor" opacity="0.6"/>
@@ -127,12 +166,69 @@
     <h1>أنت غير متصل بالإنترنت</h1>
     <p>تعذر الاتصال بالخادم. تحقق من اتصالك وحاول مرة أخرى.</p>
     <button class="retry-btn" onclick="location.reload()">
-      <!-- أيقونة إعادة تحميل SVG مدمجة -->
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 4a8 8 0 0 0-8 8h3l-4 4-4-4h3a10 10 0 1 1 10 10v-2a8 8 0 0 0 0-16z" fill="currentColor"/>
       </svg>
       إعادة المحاولة
     </button>
+
+    <div class="cached-pages">
+      <h2>صفحات متاحة بدون اتصال</h2>
+      <ul id="cachedPagesList">
+        <li>جاري التحميل...</li>
+      </ul>
+    </div>
   </div>
+
+  <script>
+    // عرض الصفحات المخزنة مؤقتاً في Cache Storage
+    document.addEventListener('DOMContentLoaded', async function() {
+      const list = document.getElementById('cachedPagesList');
+      if (!list) return;
+
+      try {
+        const cacheNames = await caches.keys();
+        const mainCache = cacheNames.find(name => name.startsWith('husayniyyah-cache'));
+        if (!mainCache) {
+          list.innerHTML = '<li>لا توجد صفحات مخزنة</li>';
+          return;
+        }
+
+        const cache = await caches.open(mainCache);
+        const requests = await cache.keys();
+        const pageUrls = requests
+          .map(req => new URL(req.url).pathname)
+          .filter(path => !path.startsWith('/static/') && path !== '/' && !path.includes('/api/') && path !== '/offline.html')
+          .filter((value, index, self) => self.indexOf(value) === index);
+
+        if (pageUrls.length === 0) {
+          list.innerHTML = '<li>لا توجد صفحات مخزنة</li>';
+          return;
+        }
+
+        list.innerHTML = '';
+        pageUrls.forEach(path => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = path;
+          let label = path;
+          if (path === '/market') label = 'السوق';
+          else if (path === '/stores') label = 'المتاجر';
+          else if (path === '/offers') label = 'العروض';
+          else if (path === '/reels') label = 'الريلز';
+          else if (path === '/services') label = 'الخدمات';
+          else if (path === '/about') label = 'حول';
+          else if (path === '/contact') label = 'اتصل بنا';
+          else if (path.startsWith('/product/')) label = 'منتج';
+          else if (path.startsWith('/store/')) label = 'متجر';
+          a.textContent = label;
+          li.appendChild(a);
+          list.appendChild(li);
+        });
+      } catch (e) {
+        list.innerHTML = '<li>تعذر جلب الصفحات المخزنة</li>';
+      }
+    });
+  </script>
 </body>
 </html>

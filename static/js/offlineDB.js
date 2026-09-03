@@ -5,7 +5,7 @@
  */
 const OfflineDB = (function() {
     const DB_NAME = 'husayniyyah_offline_db';
-    const DB_VERSION = 1;
+    const DB_VERSION = 2; // تمت زيادة الإصدار لدعم الفهارس الجديدة
 
     let db = null;
 
@@ -19,16 +19,23 @@ const OfflineDB = (function() {
 
             request.onupgradeneeded = function(event) {
                 const database = event.target.result;
-                // إنشاء مخازن الكائنات
+
+                // إنشاء أو تحديث مخزن المنتجات
                 if (!database.objectStoreNames.contains('products')) {
                     const productsStore = database.createObjectStore('products', { keyPath: 'id' });
                     productsStore.createIndex('store_id', 'store_id', { unique: false });
                     productsStore.createIndex('name', 'name', { unique: false });
+                } else {
+                    // تحديث الفهارس إذا لزم (لن يتم في هذا المثال)
                 }
+
+                // إنشاء أو تحديث مخزن المتاجر
                 if (!database.objectStoreNames.contains('stores')) {
                     const storesStore = database.createObjectStore('stores', { keyPath: 'id' });
                     storesStore.createIndex('name', 'name', { unique: false });
                 }
+
+                // إنشاء أو تحديث مخزن الطلبات المعلقة
                 if (!database.objectStoreNames.contains('pendingOrders')) {
                     const ordersStore = database.createObjectStore('pendingOrders', { keyPath: 'local_id', autoIncrement: true });
                     ordersStore.createIndex('created_at', 'created_at', { unique: false });
@@ -97,21 +104,26 @@ const OfflineDB = (function() {
         });
     }
 
+    // تطبيع بيانات المنتج لتوحيد الحقول
+    function normalizeProduct(p) {
+        return {
+            id: p.id,
+            name: p.name || '',
+            price: p.price || 0,
+            original_price: p.original_price || null,
+            is_offer: p.is_offer || false,
+            stock_quantity: p.stock_quantity || 0,
+            main_image: p.main_image || p.image || '',
+            description: p.description || '',
+            store_id: p.store_id || (p.store && p.store.id) || null,
+            store_name: p.store_name || (p.store && p.store.name) || '',
+            store_logo: p.store_logo || (p.store && p.store.logo_url) || ''
+        };
+    }
+
     // دوال متخصصة للمنتجات
     async function saveProduct(product) {
-        const item = {
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            original_price: product.original_price,
-            is_offer: product.is_offer,
-            stock_quantity: product.stock_quantity,
-            main_image: product.main_image || '',
-            description: product.description || '',
-            store_id: product.store_id,
-            store_name: product.store_name || (product.store && product.store.name) || '',
-            store_logo: product.store_logo || (product.store && product.store.logo_url) || ''
-        };
+        const item = normalizeProduct(product);
         return addItem('products', item);
     }
 
@@ -121,19 +133,9 @@ const OfflineDB = (function() {
         return new Promise((resolve, reject) => {
             transaction.oncomplete = () => resolve();
             transaction.onerror = () => reject(transaction.error);
-            products.forEach(p => store.put({
-                id: p.id,
-                name: p.name,
-                price: p.price,
-                original_price: p.original_price,
-                is_offer: p.is_offer,
-                stock_quantity: p.stock_quantity,
-                main_image: p.main_image || '',
-                description: p.description || '',
-                store_id: p.store_id,
-                store_name: p.store_name || (p.store && p.store.name) || '',
-                store_logo: p.store_logo || (p.store && p.store.logo_url) || ''
-            }));
+            products.forEach(p => {
+                store.put(normalizeProduct(p));
+            });
         });
     }
 
@@ -150,7 +152,7 @@ const OfflineDB = (function() {
     async function saveStore(store) {
         return addItem('stores', {
             id: store.id,
-            name: store.name,
+            name: store.name || '',
             description: store.description || '',
             logo_url: store.logo_url || '',
             phone: store.phone || '',
@@ -167,17 +169,19 @@ const OfflineDB = (function() {
         return new Promise((resolve, reject) => {
             transaction.oncomplete = () => resolve();
             transaction.onerror = () => reject(transaction.error);
-            stores.forEach(s => store.put({
-                id: s.id,
-                name: s.name,
-                description: s.description || '',
-                logo_url: s.logo_url || '',
-                phone: s.phone || '',
-                address: s.address || '',
-                working_hours: s.working_hours || '',
-                subscription_status: s.subscription_status || '',
-                is_open: s.is_open || false
-            }));
+            stores.forEach(s => {
+                store.put({
+                    id: s.id,
+                    name: s.name || '',
+                    description: s.description || '',
+                    logo_url: s.logo_url || '',
+                    phone: s.phone || '',
+                    address: s.address || '',
+                    working_hours: s.working_hours || '',
+                    subscription_status: s.subscription_status || '',
+                    is_open: s.is_open || false
+                });
+            });
         });
     }
 

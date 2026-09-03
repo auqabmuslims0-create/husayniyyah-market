@@ -1,4 +1,4 @@
-const CACHE_NAME = 'husayniyyah-cache-v8';
+const CACHE_NAME = 'husayniyyah-cache-v9';
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -7,11 +7,13 @@ const STATIC_ASSETS = [
   '/static/css/pages.css',
   '/static/css/cards.css',
   '/static/css/responsive.css',
-  '/static/css/dark-mode.css',
+  '/static/css/themes/dark/dark-mode.css',
   '/static/vendor/bootstrap/css/bootstrap.rtl.min.css',
   '/static/vendor/bootstrap-icons/bootstrap-icons.min.css',
   '/static/vendor/bootstrap/js/bootstrap.bundle.min.js',
   '/static/vendor/fonts/tajawal.css',
+  '/static/js/offlineDB.js',
+  '/static/js/localStore.js',
   '/static/icons/icon-96.png',
   '/static/icons/icon-144.png',
   '/static/icons/icon-192.png',
@@ -47,6 +49,15 @@ const PROTECTED_PATHS = [
 
 const CACHEABLE_PATHS = [...PUBLIC_PATHS, ...PROTECTED_PATHS];
 
+// أنماط API المهمة التي نريد تخزين استجاباتها
+const API_CACHE_PATTERNS = [
+  /^\/api\/products/,
+  /^\/api\/stores/,
+  /^\/api\/offers/,
+  /^\/api\/categories/,
+  /^\/api\/search/
+];
+
 const PAGES_TO_CACHE = [
   '/',
   '/market',
@@ -63,16 +74,19 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        cache.addAll(STATIC_ASSETS);
         return Promise.allSettled(
-          PAGES_TO_CACHE.map(page =>
-            fetch(page, {cache: 'no-store'})
-              .then(response => {
-                if (response.ok) cache.put(page, response);
-              })
-              .catch(() => {})
-          )
-        );
+          STATIC_ASSETS.map(asset => cache.add(asset))
+        ).then(() => {
+          return Promise.allSettled(
+            PAGES_TO_CACHE.map(page =>
+              fetch(page, {cache: 'no-store'})
+                .then(response => {
+                  if (response.ok) cache.put(page, response);
+                })
+                .catch(() => {})
+            )
+          );
+        });
       })
       .then(() => self.skipWaiting())
   );
@@ -95,6 +109,7 @@ self.addEventListener('fetch', event => {
 
   if (request.method !== 'GET') return;
 
+  // التعامل مع طلبات الصفحات (navigate)
   if (request.mode === 'navigate') {
     const url = new URL(request.url);
     const isCacheable = CACHEABLE_PATHS.some(path => {
@@ -122,6 +137,34 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // التعامل مع طلبات API GET
+  if (request.url.includes('/api/')) {
+    const shouldCache = API_CACHE_PATTERNS.some(pattern => pattern.test(new URL(request.url).pathname));
+    if (shouldCache) {
+      event.respondWith(
+        fetch(request)
+          .then(response => {
+            if (response && response.status === 200) {
+              const copy = response.clone();
+              caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+            }
+            return response;
+          })
+          .catch(() => {
+            return caches.match(request).then(cached => {
+              if (cached) return cached;
+              // إذا لم يوجد cached، نعيد استجابة فارغة برسالة خطأ
+              return new Response(JSON.stringify({ error: 'offline' }), {
+                headers: { 'Content-Type': 'application/json' }
+              });
+            });
+          })
+      );
+      return;
+    }
+  }
+
+  // التعامل مع الصور المرفوعة
   if (request.destination === 'image' && request.url.includes('/static/uploads/')) {
     event.respondWith(
       fetch(request)
@@ -137,6 +180,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // التعامل مع الأصول الثابتة (CSS, JS, Fonts)
   if (
     request.destination === 'style' ||
     request.destination === 'script' ||
@@ -166,6 +210,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // أي طلب آخر
   event.respondWith(fetch(request));
 });
 
