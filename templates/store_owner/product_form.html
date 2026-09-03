@@ -62,6 +62,10 @@
         font-size: 0.85rem;
         margin-top: 5px;
     }
+    .video-duration-manual-wrap {
+        display: none;
+        margin-top: 10px;
+    }
 </style>
 {% endblock %}
 
@@ -142,6 +146,11 @@
                     <i class="bi bi-exclamation-triangle"></i> مدة الفيديو تتجاوز 60 ثانية. يرجى قص الفيديو ثم إعادة اختياره.
                 </div>
                 <div class="video-duration-info" id="videoDurationInfo"></div>
+                <!-- حقل إدخال المدة اليدوي يظهر عند فشل القراءة التلقائية -->
+                <div class="video-duration-manual-wrap" id="videoDurationManualWrap">
+                    <label class="form-label small">تعذر قراءة المدة تلقائيًا، أدخل المدة بالثواني (اختياري)</label>
+                    <input type="number" name="video_duration_manual" id="videoDurationManual" class="form-control" min="0" max="60" placeholder="مثال: 15">
+                </div>
             </div>
 
             <!-- الحقول الأساسية -->
@@ -311,24 +320,59 @@ document.addEventListener('DOMContentLoaded', function() {
     const videoContainer = document.getElementById('videoContainer');
     const videoDurationWarning = document.getElementById('videoDurationWarning');
     const videoDurationInfo = document.getElementById('videoDurationInfo');
+    const videoDurationManualWrap = document.getElementById('videoDurationManualWrap');
+    const videoDurationManual = document.getElementById('videoDurationManual');
     const videoHint = document.getElementById('videoHint');
     const productForm = document.getElementById('productForm');
     let videoTooLong = false;
+    let durationReadFailed = false; // يحدد ما إذا كانت القراءة التلقائية فشلت
 
     function checkVideoDuration(file) {
         return new Promise((resolve, reject) => {
             const url = URL.createObjectURL(file);
             const video = document.createElement('video');
             video.preload = 'metadata';
-            video.onloadedmetadata = function() {
+            video.muted = true;
+            video.playsInline = true;
+
+            let resolved = false;
+            let timeoutId;
+
+            const cleanup = () => {
                 URL.revokeObjectURL(url);
-                resolve(video.duration);
+                if (timeoutId) clearTimeout(timeoutId);
             };
+
+            const tryResolve = () => {
+                if (!resolved && video.duration && isFinite(video.duration)) {
+                    resolved = true;
+                    cleanup();
+                    resolve(video.duration);
+                }
+            };
+
+            video.onloadedmetadata = tryResolve;
+            video.onloadeddata = tryResolve;
+            video.ondurationchange = tryResolve;
+            video.oncanplay = tryResolve;
             video.onerror = function() {
-                URL.revokeObjectURL(url);
-                reject(new Error('تعذر قراءة مدة الفيديو'));
+                if (!resolved) {
+                    resolved = true;
+                    cleanup();
+                    reject(new Error('failed'));
+                }
             };
+
+            timeoutId = setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    cleanup();
+                    reject(new Error('timeout'));
+                }
+            }, 5000);
+
             video.src = url;
+            video.load();
         });
     }
 
@@ -338,8 +382,10 @@ document.addEventListener('DOMContentLoaded', function() {
         videoInput.addEventListener('change', async function(e) {
             const file = e.target.files[0];
             videoTooLong = false;
+            durationReadFailed = false;
             videoDurationWarning.style.display = 'none';
             videoDurationInfo.style.display = 'none';
+            videoDurationManualWrap.style.display = 'none';
 
             if (!file) return;
 
@@ -370,7 +416,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     div.innerHTML = '<i class="bi bi-plus"></i>';
                     videoContainer.appendChild(div);
                     div.addEventListener('click', () => videoInput.click());
-                    // تصفير الحقل
                     videoInput.value = '';
                     showToast('مدة الفيديو تتجاوز 60 ثانية', 'error');
                 } else {
@@ -390,18 +435,41 @@ document.addEventListener('DOMContentLoaded', function() {
                     videoContainer.appendChild(div);
                 }
             } catch (err) {
-                showToast('تعذر قراءة مدة الفيديو، يرجى اختيار ملف آخر', 'error');
-                videoInput.value = '';
+                // في حال فشل قراءة المدة، نعرض حقل الإدخال اليدوي ولا نرفض الملف
+                durationReadFailed = true;
+                videoDurationManualWrap.style.display = 'block';
+                videoDurationManual.value = '';
+                videoHint.textContent = 'تعذر قراءة المدة تلقائيًا. يرجى إدخال مدة الفيديو بالثواني (اختياري).';
+                showToast('تعذر قراءة المدة تلقائيًا، يمكنك إدخالها يدويًا أو المتابعة', 'warning');
+                // عرض المعاينة
+                const existing = videoContainer.querySelector('.video-card');
+                if (existing) existing.remove();
+                const addBtn = videoContainer.querySelector('.add-video-card');
+                if (addBtn) addBtn.remove();
+                const div = document.createElement('div');
+                div.className = 'video-card';
+                const videoUrl = URL.createObjectURL(file);
+                div.innerHTML = `<video controls><source src="${videoUrl}" type="${file.type}"></video><button type="button" class="remove-video">×</button>`;
+                videoContainer.appendChild(div);
             }
         });
     }
 
-    // منع إرسال النموذج إذا كان الفيديو أطول من المسموح
+    // منع إرسال النموذج إذا كان الفيديو أطول من المسموح (بناءً على الفحص التلقائي أو اليدوي)
     if (productForm) {
         productForm.addEventListener('submit', function(e) {
             if (videoTooLong) {
                 e.preventDefault();
                 showToast('لا يمكن حفظ المنتج: مدة الفيديو تتجاوز 60 ثانية', 'error');
+                return;
+            }
+            if (durationReadFailed) {
+                const manualDuration = parseFloat(videoDurationManual.value);
+                if (manualDuration && manualDuration > 60) {
+                    e.preventDefault();
+                    showToast('المدة اليدوية تتجاوز 60 ثانية، يرجى التصحيح', 'error');
+                }
+                // إذا لم يُدخل قيمة، نسمح بالإرسال مع تحذير
             }
         });
     }
@@ -452,8 +520,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 card.remove();
                 // إعادة تعيين حالة الفيديو
                 videoTooLong = false;
+                durationReadFailed = false;
                 videoDurationWarning.style.display = 'none';
                 videoDurationInfo.style.display = 'none';
+                videoDurationManualWrap.style.display = 'none';
                 videoHint.textContent = 'اضغط + لاختيار فيديو (يجب ألا تتجاوز مدته 60 ثانية).';
                 videoInput.value = '';
                 if (!videoContainer.querySelector('.video-card') && !videoContainer.querySelector('.add-video-card')) {

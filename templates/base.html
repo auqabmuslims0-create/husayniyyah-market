@@ -2,6 +2,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+    <meta name="csrf-token" content="{{ csrf_token }}">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}سوق الحسينية{% endblock %}</title>
@@ -305,7 +306,7 @@
   {% if show_bottom_nav %}
   <nav class="bottom-nav">
     <a href="{{ url_for('market.market') }}" class="bottom-nav-item {% if request.endpoint == 'market.market' %}active{% endif %}"><i class="bi bi-shop-fill"></i><span>السوق</span></a>
-    <a href="{{ url_for('reels.reels') }}" class="bottom-nav-item {% if request.endpoint == 'reels.reels' %}active{% endif %}"><i class="bi bi-film"></i><span>الريلز</span></a>
+    <a href="{{ url_for('reels.reels_page') }}" class="bottom-nav-item {% if request.endpoint == 'reels.reels_page' %}active{% endif %}"><i class="bi bi-film"></i><span>الريلز</span></a>
     <div class="cart-dock">
       <a href="{{ url_for('cart.cart') }}" class="cart-circle">
         <i class="bi bi-basket3-fill">

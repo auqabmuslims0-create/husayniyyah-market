@@ -99,6 +99,17 @@
             </a>
         </div>
 
+        <!-- الريلز -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('store.store_reels', store_id=store.id) }}" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-film stat-icon text-primary"></i>
+                    <div class="stat-value">{{ reels_count }}</div>
+                    <p class="stat-label">الريلز</p>
+                </div>
+            </a>
+        </div>
+
         <!-- الطلبات -->
         <div class="col-6 col-md-4 col-lg-3">
             <a href="{{ url_for('store.store_orders', store_id=store.id) }}" class="text-decoration-none">

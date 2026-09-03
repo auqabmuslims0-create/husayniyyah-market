@@ -27,7 +27,8 @@ from store_owner import store_bp
 from delivery.routes import delivery_bp
 
 from customer.market import market_bp
-from customer.reels import reels_bp
+# تعديل: استيراد الريلز من blueprints.reels بدلاً من customer.reels
+from blueprints.reels import reels_bp
 from customer.stores import stores_bp
 from customer.offers import offers_bp
 from customer.services import services_bp
@@ -207,7 +208,7 @@ def before_request_checks():
         'auth.reset_password', 'auth.show_public_id', 'static',
         'market.home', 'market.market', 'market.search', 'market.search_suggestions',
         'stores.stores_page', 'stores.store_public', 'stores.product_public',
-        'offers.offers_page', 'reels.reels', 'services.services_page', 'services.contact',
+        'offers.offers_page', 'reels.reels_page', 'services.services_page', 'services.contact',
         'about', 'onboarding'
     ]
     if g.user is None:
@@ -325,7 +326,7 @@ def inject_show_bottom_nav():
     # قائمة الصفحات التي يظهر فيها الشريط السفلي للمستخدمين المسجلين (خاصة العملاء)
     allowed_customer_endpoints = [
         'market.market',
-        'reels.reels',
+        'reels.reels_page',
         'cart.cart',
         'offers.offers_page',
         'stores.stores_page',
@@ -337,7 +338,7 @@ def inject_show_bottom_nav():
 
     # للزوار (غير مسجلين) يمكن عرض الشريط السفلي في الصفحات العامة
     public_endpoints = [
-        'market.market', 'reels.reels', 'offers.offers_page', 'stores.stores_page',
+        'market.market', 'reels.reels_page', 'offers.offers_page', 'stores.stores_page',
         'stores.store_public', 'stores.product_public', 'services.services_page'
     ]
 

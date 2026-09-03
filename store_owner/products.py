@@ -78,7 +78,7 @@ def new_product(store_id):
                 flash('التصنيف غير صالح')
                 return redirect(url_for('store.new_product', store_id=store.id))
 
-        # حفظ الصورة الأساسية (لا يوجد قديم لأن المنتج جديد)
+        # حفظ الصورة الأساسية
         main_image = None
         main_file = request.files.get('main_image')
         if main_file and main_file.filename != '':
@@ -137,6 +137,21 @@ def new_product(store_id):
             options=options
         )
         db.session.add(product)
+        db.session.flush()  # للحصول على product.id قبل commit
+
+        # إنشاء سجل ريل تلقائيًا إذا كان هناك فيديو
+        if video_filename:
+            reel = models.Reel(
+                store_id=store.id,
+                product_id=product.id,
+                video_url=video_filename,
+                thumbnail_url=main_image if main_image else None,
+                caption=name,
+                views=0,
+                is_active=True
+            )
+            db.session.add(reel)
+
         db.session.commit()
         flash('تم إضافة المنتج')
         return redirect(url_for('store.store_products', store_id=store.id))
@@ -199,24 +214,20 @@ def edit_product(store_id, product_id):
         # حذف الصورة الأساسية إذا طُلب
         if request.form.get('remove_main_image') == 'yes':
             if product.main_image:
-                # حذف من Cloudinary
                 delete_cloudinary_file(product.main_image)
                 product.main_image = None
 
-        # الصور الفرعية: نبدأ من القائمة الحالية (إن وُجدت)
+        # الصور الفرعية
         existing_sub = []
         if product.sub_images:
             existing_sub = [img.strip() for img in product.sub_images.split(',') if img.strip()]
 
-        # حذف الصور الفرعية المطلوبة
         remove_sub_images = request.form.getlist('remove_existing_sub_images')
         for img in remove_sub_images:
             if img in existing_sub:
                 existing_sub.remove(img)
-                # حذف من Cloudinary
                 delete_cloudinary_file(img)
 
-        # إضافة صور فرعية جديدة (حتى 4 - الحالي)
         uploaded_files = request.files.getlist('sub_images')
         for file in uploaded_files:
             if len(existing_sub) >= 4:
@@ -229,10 +240,15 @@ def edit_product(store_id, product_id):
         product.sub_images = ','.join(existing_sub) if existing_sub else None
 
         # الفيديو
+        new_video_saved = False
         if request.form.get('remove_video') == 'yes':
             if product.video:
                 delete_cloudinary_file(product.video)
                 product.video = None
+                # حذف سجل الريلز المرتبط إذا تم حذف الفيديو
+                existing_reel = models.Reel.query.filter_by(product_id=product.id).first()
+                if existing_reel:
+                    db.session.delete(existing_reel)
         else:
             video_file = request.files.get('video')
             if video_file and video_file.filename != '':
@@ -240,6 +256,7 @@ def edit_product(store_id, product_id):
                 new_video = save_video(video_file, old_url=old_url)
                 if new_video:
                     product.video = new_video
+                    new_video_saved = True
                 else:
                     flash('فشل رفع الفيديو', 'error')
                     return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
@@ -268,6 +285,37 @@ def edit_product(store_id, product_id):
         product.offer_price = offer_price if is_offer else None
         product.original_price = original_price if is_offer else None
         product.offer_description = offer_description if is_offer else ''
+
+        db.session.flush()  # تأكد من تحديث المنتج
+
+        # مزامنة الريلز بعد تعديل المنتج
+        if product.video:
+            existing_reel = models.Reel.query.filter_by(product_id=product.id).first()
+            if existing_reel:
+                # تحديث بيانات الريلز لتطابق المنتج
+                existing_reel.video_url = product.video
+                existing_reel.thumbnail_url = product.main_image if product.main_image else None
+                existing_reel.caption = product.name
+                existing_reel.is_active = True
+                if new_video_saved:
+                    existing_reel.views = 0  # إعادة تعيين العداد عند تغيير الفيديو
+            else:
+                # إنشاء ريل جديد إذا لم يكن موجودًا
+                reel = models.Reel(
+                    store_id=store.id,
+                    product_id=product.id,
+                    video_url=product.video,
+                    thumbnail_url=product.main_image if product.main_image else None,
+                    caption=product.name,
+                    views=0,
+                    is_active=True
+                )
+                db.session.add(reel)
+        else:
+            # إذا انتهى الفيديو، تأكد من حذف الريلز
+            existing_reel = models.Reel.query.filter_by(product_id=product.id).first()
+            if existing_reel:
+                db.session.delete(existing_reel)
 
         db.session.commit()
         flash('تم حفظ تعديلات المنتج')
@@ -298,6 +346,11 @@ def delete_product(store_id, product_id):
                 delete_cloudinary_file(img)
     if product.video:
         delete_cloudinary_file(product.video)
+
+    # حذف سجل الريلز المرتبط إذا وجد
+    existing_reel = models.Reel.query.filter_by(product_id=product.id).first()
+    if existing_reel:
+        db.session.delete(existing_reel)
 
     db.session.delete(product)
     db.session.commit()

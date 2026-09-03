@@ -12,7 +12,7 @@ class User(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     avatar = db.Column(db.String(300), nullable=True)
     bio = db.Column(db.Text, nullable=True)
-    dark_mode = db.Column(db.Boolean, default=False)  # تفضيل الوضع الداكن
+    dark_mode = db.Column(db.Boolean, default=False)
     role = db.Column(db.String(20), nullable=False, index=True)
     is_active = db.Column(db.Boolean, default=True)
     shift_start_time = db.Column(db.Time, nullable=True)
@@ -33,6 +33,9 @@ class User(db.Model):
     cart_items = db.relationship('CartItem', back_populates='user', cascade="all, delete-orphan")
     payments = db.relationship('Payment', back_populates='user', cascade="all, delete-orphan")
     push_subscriptions = db.relationship('PushSubscription', back_populates='user', cascade="all, delete-orphan")
+    # جديد للريلز
+    reels_reactions = db.relationship('ReelReaction', back_populates='user', cascade="all, delete-orphan")
+    reels_comments = db.relationship('ReelComment', back_populates='user', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -69,6 +72,8 @@ class Store(db.Model):
     subscriptions = db.relationship('Subscription', back_populates='store', foreign_keys='Subscription.store_id')
     cart_items = db.relationship('CartItem', back_populates='store', cascade="all, delete-orphan")
     payments = db.relationship('Payment', back_populates='store')
+    # جديد للريلز
+    reels = db.relationship('Reel', back_populates='store', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Store {self.name}>'
@@ -99,7 +104,7 @@ class Product(db.Model):
     price = db.Column(db.Float, nullable=False)
     is_offer = db.Column(db.Boolean, default=False, index=True)
     offer_price = db.Column(db.Float, nullable=True)
-    original_price = db.Column(db.Float, nullable=True)  # السعر قبل الخصم إذا كان العرض مختلفًا
+    original_price = db.Column(db.Float, nullable=True)
     offer_description = db.Column(db.Text, nullable=True)
     stock_quantity = db.Column(db.Integer, default=0)
     options = db.Column(db.Text, nullable=True)
@@ -126,6 +131,8 @@ class Product(db.Model):
     reactions = db.relationship('ProductReaction', back_populates='product', cascade="all, delete-orphan")
     comments = db.relationship('ProductComment', back_populates='product', cascade="all, delete-orphan")
     cart_items = db.relationship('CartItem', back_populates='product', cascade="all, delete-orphan")
+    # جديد للريلز
+    reels = db.relationship('Reel', back_populates='product', cascade="all, delete-orphan")
 
     @property
     def images(self):
@@ -225,7 +232,7 @@ class OrderStatusHistory(db.Model):
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False, index=True)
     from_status = db.Column(db.String(20), nullable=True)
     to_status = db.Column(db.String(20), nullable=False)
-    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)  # user id
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
     note = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=current_time)
 
@@ -312,8 +319,8 @@ class Notification(db.Model):
     icon = db.Column(db.String(50), nullable=True)
     is_global = db.Column(db.Boolean, default=False)
     extra_data = db.Column(db.Text, nullable=True)
-    read_at = db.Column(db.DateTime, nullable=True)        # new
-    expires_at = db.Column(db.DateTime, nullable=True)     # new
+    read_at = db.Column(db.DateTime, nullable=True)
+    expires_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=current_time)
 
     __table_args__ = (
@@ -406,6 +413,62 @@ class ProductComment(db.Model):
 
     product = db.relationship('Product', back_populates='comments')
     user = db.relationship('User', back_populates='product_comments')
+
+# ========== نماذج الريلز الجديدة ==========
+
+class Reel(db.Model):
+    __tablename__ = 'reels'
+    id = db.Column(db.Integer, primary_key=True)
+    store_id = db.Column(db.Integer, db.ForeignKey('stores.id'), nullable=False, index=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=True, index=True)
+    video_url = db.Column(db.String(300), nullable=False)
+    thumbnail_url = db.Column(db.String(300), nullable=True)
+    caption = db.Column(db.Text, nullable=True)
+    views = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=current_time, index=True)
+
+    __table_args__ = (
+        db.Index('ix_reel_store_created', 'store_id', 'created_at'),
+        db.Index('ix_reel_active_created', 'is_active', 'created_at'),
+    )
+
+    store = db.relationship('Store', back_populates='reels')
+    product = db.relationship('Product', back_populates='reels')
+    reactions = db.relationship('ReelReaction', back_populates='reel', cascade="all, delete-orphan")
+    comments = db.relationship('ReelComment', back_populates='reel', cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f'<Reel {self.id}>'
+
+class ReelReaction(db.Model):
+    __tablename__ = 'reel_reactions'
+    __table_args__ = (
+        UniqueConstraint('reel_id', 'user_id', name='uq_reel_user_reaction'),
+        CheckConstraint("reaction_type IN ('like', 'love', 'wow', 'sad', 'angry')", name='ck_reel_reaction_type_valid')
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    reel_id = db.Column(db.Integer, db.ForeignKey('reels.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    reaction_type = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=current_time)
+
+    reel = db.relationship('Reel', back_populates='reactions')
+    user = db.relationship('User', back_populates='reels_reactions')
+
+class ReelComment(db.Model):
+    __tablename__ = 'reel_comments'
+    id = db.Column(db.Integer, primary_key=True)
+    reel_id = db.Column(db.Integer, db.ForeignKey('reels.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=current_time)
+
+    reel = db.relationship('Reel', back_populates='comments')
+    user = db.relationship('User', back_populates='reels_comments')
+
+# ========== نهاية نماذج الريلز ==========
 
 class PasswordReset(db.Model):
     __tablename__ = 'password_resets'

@@ -126,6 +126,7 @@ def store_manage(store_id):
     products_count = models.Product.query.filter_by(store_id=store.id).count()
     orders_count = models.Order.query.filter_by(store_id=store.id).count()
     categories_count = models.Category.query.filter_by(store_id=store.id).count()
+    reels_count = models.Reel.query.filter_by(store_id=store.id).count()  # إضافة
     total_revenue = db.session.query(func.sum(models.Order.total)).filter(
         models.Order.store_id == store.id,
         models.Order.status != 'cancelled'
@@ -152,6 +153,7 @@ def store_manage(store_id):
                            products_count=products_count,
                            orders_count=orders_count,
                            categories_count=categories_count,
+                           reels_count=reels_count,  # إضافة
                            total_revenue=total_revenue,
                            reviews_count=reviews_count,
                            comments_count=comments_count,
