@@ -1,12 +1,10 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, session
 from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 from database import db
 import models
 from services.order_service import OrderService
-from services.notification_service import NotificationService
 from decorators import role_required
-from time_utils import current_time
 from . import admin_bp
 
 @admin_bp.route('/admin/orders')
@@ -73,42 +71,13 @@ def admin_update_order_status(order_id):
         flash('حالة غير صالحة', 'error')
         return redirect(url_for('admin.admin_orders'))
 
-    if new_status == 'cancelled' and order.status != 'cancelled':
-        for item in order.items:
-            product = item.product
-            if product:
-                product.stock_quantity += item.quantity
-                db.session.add(product)
-
-    order.status = new_status
-    if new_status == 'cancelled':
-        order.is_cancelled = True
-    elif new_status == 'delivered':
-        order.delivered_at = current_time()
-
-    try:
-        db.session.commit()
-
-        # إرسال إشعارات
-        if order.customer_id:
-            NotificationService.send_to_user(
-                user_id=order.customer_id,
-                message=f'تم تحديث حالة طلبك رقم {order.id} إلى {new_status}',
-                link=url_for('cart.cart'),
-                type_=NotificationService.TYPE_ORDER
-            )
-        if order.store_id:
-            store = db.session.get(models.Store, order.store_id)
-            if store and store.owner_id:
-                NotificationService.send_to_user(
-                    user_id=store.owner_id,
-                    message=f'قام المدير بتحديث حالة الطلب رقم {order.id} إلى {new_status}',
-                    link=url_for('store.store_orders', store_id=store.id),
-                    type_=NotificationService.TYPE_ORDER
-                )
-        db.session.commit()
+    updated, error = OrderService.update_order_status_by_admin(
+        order,
+        new_status,
+        actor_id=session.get('user_id')
+    )
+    if error:
+        flash(error, 'error')
+    else:
         flash('تم تحديث حالة الطلب بنجاح', 'success')
-    except Exception:
-        db.session.rollback()
-        flash('حدث خطأ أثناء تحديث حالة الطلب', 'error')
     return redirect(url_for('admin.admin_orders'))

@@ -6,7 +6,7 @@ from time_utils import current_time
 from delivery_utils import is_delivery_available
 from services.notification_service import NotificationService
 from services.payment_service import PaymentService
-from utils import get_setting, is_store_active
+from utils import get_setting, is_store_active, is_store_open
 
 class OrderService:
     @staticmethod
@@ -15,10 +15,23 @@ class OrderService:
         return ''.join(random.choices('0123456789', k=6))
 
     @staticmethod
+    def get_effective_price(product):
+        """إرجاع السعر الفعلي للمنتج مع مراعاة العروض."""
+        if product.is_offer and product.offer_price is not None:
+            return product.offer_price
+        return product.price
+
+    @staticmethod
     def _check_store_active(store):
         """التحقق من أن المتجر نشط واشتراكه مدفوع وغير منتهي."""
         if not is_store_active(store):
             raise ValueError('هذا المتجر غير نشط حالياً ولا يمكن الطلب منه')
+
+    @staticmethod
+    def _check_store_open(store):
+        """التحقق من أن المتجر مفتوح الآن (اختياري)."""
+        if store.working_hours and not is_store_open(store):
+            raise ValueError('المتجر مغلق حالياً ولا يمكن الطلب منه')
 
     @staticmethod
     def create_order(user, store, cart_items=None, items_data=None, delivery_address=None,
@@ -30,6 +43,7 @@ class OrderService:
             raise ValueError("بيانات الطلب غير مكتملة")
 
         OrderService._check_store_active(store)
+        OrderService._check_store_open(store)
 
         order_items = []
         if cart_items is not None:
@@ -63,7 +77,7 @@ class OrderService:
             if product.stock_quantity < qty:
                 raise ValueError(f"المخزون غير كافٍ للمنتج {product.name}")
 
-        product_total = sum(product.price * qty for product, qty in order_items)
+        product_total = sum(OrderService.get_effective_price(product) * qty for product, qty in order_items)
         delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
         grand_total = product_total + delivery_fee
 
@@ -86,7 +100,6 @@ class OrderService:
         db.session.add(order)
         db.session.flush()
 
-        # إنشاء سجل دفع
         PaymentService.create_payment(
             user_id=user.id,
             amount=grand_total,
@@ -105,10 +118,19 @@ class OrderService:
                 order_id=order.id,
                 product_id=product.id,
                 quantity=qty,
-                price=product.price,
+                price=OrderService.get_effective_price(product),
                 options_selected=None
             )
             db.session.add(order_item)
+
+        history = models.OrderStatusHistory(
+            order_id=order.id,
+            from_status=None,
+            to_status='new',
+            changed_by=user.id,
+            note='إنشاء الطلب'
+        )
+        db.session.add(history)
 
         NotificationService.send_to_store_owner(
             store,
@@ -127,7 +149,7 @@ class OrderService:
     def cancel_order(user, order):
         if order.customer_id != user.id:
             raise PermissionError("لا يمكنك إلغاء هذا الطلب")
-        if order.status != 'new':
+        if order.status not in ['new', 'confirmed', 'preparing']:
             raise ValueError("لا يمكن إلغاء هذا الطلب في حالته الحالية")
 
         for item in order.items:
@@ -136,9 +158,19 @@ class OrderService:
                 product.stock_quantity += item.quantity
                 db.session.add(product)
 
+        from_status = order.status
         order.status = 'cancelled'
         order.is_cancelled = True
         db.session.add(order)
+
+        history = models.OrderStatusHistory(
+            order_id=order.id,
+            from_status=from_status,
+            to_status='cancelled',
+            changed_by=user.id,
+            note='إلغاء من قبل الزبون'
+        )
+        db.session.add(history)
 
         if order.store:
             NotificationService.send_to_store_owner(
@@ -161,8 +193,18 @@ class OrderService:
         if order.status != 'ready':
             raise ValueError("لا يمكن بدء التسليم الآن")
 
+        from_status = order.status
         order.status = 'delivering'
         db.session.add(order)
+
+        history = models.OrderStatusHistory(
+            order_id=order.id,
+            from_status=from_status,
+            to_status='delivering',
+            changed_by=delivery_user.id,
+            note='بدء التسليم من قبل المندوب'
+        )
+        db.session.add(history)
 
         if order.store:
             NotificationService.send_to_store_owner(
@@ -187,9 +229,19 @@ class OrderService:
         if delivery_code != order.delivery_code:
             raise ValueError("رمز التسليم غير صحيح")
 
+        from_status = order.status
         order.status = 'delivered'
         order.delivered_at = current_time()
         db.session.add(order)
+
+        history = models.OrderStatusHistory(
+            order_id=order.id,
+            from_status=from_status,
+            to_status='delivered',
+            changed_by=delivery_user.id,
+            note='تسليم ناجح'
+        )
+        db.session.add(history)
 
         if order.store:
             NotificationService.send_to_store_owner(
@@ -219,28 +271,31 @@ class OrderService:
         return order
 
     @staticmethod
-    def update_order_status_by_store(user, store, order, new_status,
-                                     delivery_person_id=None, notify_delivery=False):
-        if order.store_id != store.id:
-            return None, 'هذا الطلب لا يخص متجرك'
-
-        # التحقق من نشاط المتجر
-        if not is_store_active(store):
-            return None, 'متجرك غير نشط حالياً، لا يمكنك تحديث الطلبات'
-
+    def _apply_status_update(order, new_status, actor_id, note='',
+                             delivery_person_id=None, notify_delivery=False):
         if order.status == 'cancelled':
-            return None, 'هذا الطلب ملغي ولا يمكن تغيير حالته'
+            raise ValueError('هذا الطلب ملغي ولا يمكن تغيير حالته')
 
-        allowed_statuses = ['confirmed', 'preparing', 'ready', 'delivering', 'cancelled']
+        allowed_statuses = ['confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']
         if new_status not in allowed_statuses:
-            return None, 'حالة غير صالحة'
+            raise ValueError('حالة غير صالحة')
+
+        if new_status == 'delivered' and order.status != 'delivering':
+            raise ValueError('لا يمكن تعيين الحالة إلى تم التسليم مباشرة')
+
+        if new_status == 'delivering' and not delivery_person_id:
+            raise ValueError('يجب تعيين مندوب قبل بدء التسليم')
 
         if delivery_person_id:
             person = db.session.get(models.User, delivery_person_id)
-            if not person or not is_delivery_available(person):
-                return None, 'المندوب غير متاح حالياً'
-            if not store.has_delivery:
-                return None, 'هذا المتجر لا يوفر خدمة توصيل'
+            if not person:
+                raise ValueError('المندوب غير موجود')
+            if person.role != 'delivery':
+                raise ValueError('المستخدم المحدد ليس مندوب توصيل')
+            if not is_delivery_available(person):
+                raise ValueError('المندوب غير متاح حالياً')
+            if not order.store.has_delivery:
+                raise ValueError('هذا المتجر لا يوفر خدمة توصيل')
 
             if order.delivery_person_id is None:
                 order.delivery_fee = float(get_setting('delivery_fee', 100))
@@ -249,15 +304,16 @@ class OrderService:
             if notify_delivery:
                 NotificationService.send_to_user(
                     user_id=person.id,
-                    message=f'تم إسناد الطلب رقم {order.id} إليك من متجر {store.name}',
+                    message=f'تم إسناد الطلب رقم {order.id} إليك من متجر {order.store.name}',
                     link=url_for('delivery.delivery_dashboard'),
                     type_=NotificationService.TYPE_DELIVERY,
                     priority=NotificationService.PRIORITY_IMPORTANT
                 )
         else:
+            if not order.delivery_address:
+                order.delivery_fee = 0.0
             if new_status in ['confirmed', 'preparing']:
                 order.delivery_person_id = None
-                order.delivery_fee = 0.0
 
         if new_status == 'cancelled' and order.status != 'cancelled':
             for item in order.items:
@@ -266,30 +322,80 @@ class OrderService:
                     product.stock_quantity += item.quantity
                     db.session.add(product)
 
+        from_status = order.status
         order.status = new_status
         if new_status == 'cancelled':
             order.is_cancelled = True
+        elif new_status == 'delivered':
+            order.delivered_at = current_time()
+            payments = models.Payment.query.filter_by(order_id=order.id).all()
+            for p in payments:
+                if p.status == 'pending' and p.method == 'cash':
+                    p.status = 'paid'
+
         db.session.add(order)
+
+        history = models.OrderStatusHistory(
+            order_id=order.id,
+            from_status=from_status,
+            to_status=new_status,
+            changed_by=actor_id,
+            note=note or f'تغيير الحالة إلى {new_status}'
+        )
+        db.session.add(history)
 
         if order.customer_id:
             customer = db.session.get(models.User, order.customer_id)
             if customer:
                 NotificationService.send_to_user(
                     user_id=customer.id,
-                    message=f'تحديث لحالة طلبك رقم {order.id} من متجر {store.name}: {new_status}',
+                    message=f'تحديث لحالة طلبك رقم {order.id} من متجر {order.store.name}: {new_status}',
                     link=url_for('cart.cart'),
                     type_=NotificationService.TYPE_ORDER
                 )
-
-        if new_status == 'delivered':
-            payments = models.Payment.query.filter_by(order_id=order.id).all()
-            for p in payments:
-                if p.status == 'pending' and p.method == 'cash':
-                    p.status = 'paid'
 
         try:
             db.session.commit()
         except Exception:
             db.session.rollback()
-            return None, 'حدث خطأ أثناء تحديث الطلب'
-        return order, None
+            raise ValueError('حدث خطأ أثناء تحديث الطلب')
+
+        return order
+
+    @staticmethod
+    def update_order_status_by_store(user, store, order, new_status,
+                                     delivery_person_id=None, notify_delivery=False):
+        if order.store_id != store.id:
+            return None, 'هذا الطلب لا يخص متجرك'
+
+        if not is_store_active(store):
+            return None, 'متجرك غير نشط حالياً، لا يمكنك تحديث الطلبات'
+
+        try:
+            updated = OrderService._apply_status_update(
+                order=order,
+                new_status=new_status,
+                actor_id=user.id,
+                delivery_person_id=delivery_person_id,
+                notify_delivery=notify_delivery
+            )
+            return updated, None
+        except ValueError as e:
+            return None, str(e)
+        except Exception as e:
+            return None, 'حدث خطأ غير متوقع'
+
+    @staticmethod
+    def update_order_status_by_admin(order, new_status, actor_id=None):
+        try:
+            updated = OrderService._apply_status_update(
+                order=order,
+                new_status=new_status,
+                actor_id=actor_id,
+                note='تحديث من قبل الإدارة'
+            )
+            return updated, None
+        except ValueError as e:
+            return None, str(e)
+        except Exception as e:
+            return None, 'حدث خطأ غير متوقع'

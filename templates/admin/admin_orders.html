@@ -181,13 +181,17 @@
         <form method="get" class="filter-form">
             <select name="status">
                 <option value="">جميع الحالات</option>
-                <option value="new" {% if status_filter == 'new' %}selected{% endif %}>جديد</option>
-                <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>مؤكد</option>
-                <option value="preparing" {% if status_filter == 'preparing' %}selected{% endif %}>قيد التجهيز</option>
-                <option value="ready" {% if status_filter == 'ready' %}selected{% endif %}>جاهز للتسليم</option>
-                <option value="delivering" {% if status_filter == 'delivering' %}selected{% endif %}>قيد التسليم</option>
-                <option value="delivered" {% if status_filter == 'delivered' %}selected{% endif %}>تم التسليم</option>
-                <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>ملغي</option>
+                {% for status in allowed_statuses %}
+                <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
+                    {% if status == 'new' %}جديد
+                    {% elif status == 'confirmed' %}مؤكد
+                    {% elif status == 'preparing' %}قيد التجهيز
+                    {% elif status == 'ready' %}جاهز للتسليم
+                    {% elif status == 'delivering' %}قيد التسليم
+                    {% elif status == 'delivered' %}تم التسليم
+                    {% elif status == 'cancelled' %}ملغي{% endif %}
+                </option>
+                {% endfor %}
             </select>
             <input type="text" name="q" value="{{ q }}" placeholder="بحث برقم الطلب أو اسم الزبون أو المتجر">
             <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">بحث</button>
@@ -278,6 +282,29 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if pagination.pages > 1 %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('admin.admin_orders', q=q, status=status_filter, page=pagination.prev_num) if pagination.has_prev else '#' }}">السابق</a>
+            </li>
+            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if page_num %}
+                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('admin.admin_orders', q=q, status=status_filter, page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('admin.admin_orders', q=q, status=status_filter, page=pagination.next_num) if pagination.has_next else '#' }}">التالي</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+
     {% else %}
         <div class="text-center py-5 empty-state">
             <i class="bi bi-receipt display-1 text-muted"></i>

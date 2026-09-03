@@ -248,7 +248,6 @@
     {% if orders %}
         {% for order in orders %}
         <div class="card order-card">
-            <!-- رأس البطاقة -->
             <div class="order-card-header">
                 <div>
                     <span class="order-number">طلب #{{ order.id }}</span>
@@ -257,7 +256,6 @@
                 {{ macros.render_order_status(order.status) }}
             </div>
 
-            <!-- ملخص سريع -->
             <div class="order-summary">
                 <div class="summary-item">
                     <i class="bi bi-person"></i>
@@ -283,7 +281,6 @@
                 {% endif %}
             </div>
 
-            <!-- زر التفاصيل -->
             <div class="order-actions">
                 <button class="btn btn-outline-primary btn-details" type="button"
                         data-bs-toggle="collapse" data-bs-target="#orderDetails{{ order.id }}"
@@ -292,7 +289,6 @@
                 </button>
             </div>
 
-            <!-- القسم الموسع -->
             <div class="collapse order-details-collapse" id="orderDetails{{ order.id }}">
                 <h6 class="fw-bold mb-3"><i class="bi bi-box-seam"></i> المنتجات</h6>
                 <div class="table-responsive products-table">
@@ -388,6 +384,28 @@
             </div>
         </div>
         {% endfor %}
+
+        {% if pagination.pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('store.store_orders', store_id=store.id, status=status_filter, page=pagination.prev_num) if pagination.has_prev else '#' }}">السابق</a>
+                </li>
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('store.store_orders', store_id=store.id, status=status_filter, page=page_num) }}">{{ page_num }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% endif %}
+                {% endfor %}
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('store.store_orders', store_id=store.id, status=status_filter, page=pagination.next_num) if pagination.has_next else '#' }}">التالي</a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
     {% else %}
         <div class="text-center py-5 empty-state">
             <i class="bi bi-inbox display-1 text-muted"></i>
@@ -406,7 +424,6 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // اختيار مندوب من البطاقة
     document.querySelectorAll('.select-person-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const personId = this.getAttribute('data-person-id');
@@ -416,7 +433,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (hiddenInput) {
                 hiddenInput.value = personId;
             }
-            // تحديث التحديد البصري
             const orderForm = document.getElementById('orderForm' + orderId);
             const allCards = orderForm.querySelectorAll('.delivery-person-card');
             allCards.forEach(card => {

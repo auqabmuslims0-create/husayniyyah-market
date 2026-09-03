@@ -2,7 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, abort
 from database import db
 import models
 from datetime import timedelta
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import selectinload
 from time_utils import current_time
 from delivery_utils import is_delivery_available
 from decorators import role_required
@@ -19,26 +19,23 @@ def store_orders(store_id):
     user, store = result
 
     status_filter = request.args.get('status', '').strip()
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+
     allowed_statuses = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']
 
     query = models.Order.query.filter_by(store_id=store.id).options(
-        joinedload(models.Order.items).joinedload(models.OrderItem.product),
-        joinedload(models.Order.delivery_person),
-        joinedload(models.Order.customer)
+        selectinload(models.Order.items).selectinload(models.OrderItem.product),
+        selectinload(models.Order.delivery_person),
+        selectinload(models.Order.customer)
     )
     if status_filter in allowed_statuses:
         query = query.filter(models.Order.status == status_filter)
 
-    all_orders = query.order_by(models.Order.created_at.desc()).all()
+    query = query.order_by(models.Order.created_at.desc())
 
-    cutoff = current_time() - timedelta(hours=24)
-    orders = []
-    for order in all_orders:
-        if order.status == 'delivered':
-            delivered_time = order.delivered_at or order.created_at
-            if delivered_time < cutoff:
-                continue
-        orders.append(order)
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    orders = pagination.items
 
     all_delivery_persons = models.User.query.filter_by(role='delivery').all()
     delivery_persons = [p for p in all_delivery_persons if is_delivery_available(p)]
@@ -57,6 +54,7 @@ def store_orders(store_id):
     return render_template('store_owner/store_orders.html',
                            store=store,
                            orders=orders,
+                           pagination=pagination,
                            delivery_persons=delivery_persons,
                            delivery_person_stats=delivery_person_stats,
                            status_filter=status_filter,

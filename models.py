@@ -195,6 +195,7 @@ class Order(db.Model):
     delivery_person = db.relationship('User', back_populates='delivery_orders', foreign_keys=[delivery_person_id])
     items = db.relationship('OrderItem', back_populates='order', cascade="all, delete-orphan")
     payments = db.relationship('Payment', back_populates='order', cascade="all, delete-orphan")
+    status_history = db.relationship('OrderStatusHistory', back_populates='order', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Order {self.id}>'
@@ -218,6 +219,19 @@ class OrderItem(db.Model):
 
     def __repr__(self):
         return f'<OrderItem {self.product_id} x{self.quantity}>'
+
+class OrderStatusHistory(db.Model):
+    __tablename__ = 'order_status_history'
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=False, index=True)
+    from_status = db.Column(db.String(20), nullable=True)
+    to_status = db.Column(db.String(20), nullable=False)
+    changed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)  # user id
+    note = db.Column(db.String(200), nullable=True)
+    created_at = db.Column(db.DateTime, default=current_time)
+
+    order = db.relationship('Order', back_populates='status_history')
+    actor = db.relationship('User', foreign_keys=[changed_by])
 
 class CartItem(db.Model):
     __tablename__ = 'cart_items'
