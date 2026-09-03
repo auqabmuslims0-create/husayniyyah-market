@@ -158,15 +158,17 @@ def create_admin_command():
     ensure_admin()
 
 def ensure_admin():
-    admin_username = os.environ.get('ADMIN_USERNAME')
-    admin_email = os.environ.get('ADMIN_EMAIL')
-    admin_phone = os.environ.get('ADMIN_PHONE')
-    admin_password = os.environ.get('ADMIN_PASSWORD')
-    if not all([admin_username, admin_email, admin_phone, admin_password]):
-        app.logger.warning('لم يتم توفير بيانات المدير عبر .env، تخطي الإنشاء التلقائي.')
-        return
-
+    # ضمان وجود الجداول قبل أي استعلام
     with app.app_context():
+        db.create_all()
+        admin_username = os.environ.get('ADMIN_USERNAME')
+        admin_email = os.environ.get('ADMIN_EMAIL')
+        admin_phone = os.environ.get('ADMIN_PHONE')
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+        if not all([admin_username, admin_email, admin_phone, admin_password]):
+            app.logger.warning('لم يتم توفير بيانات المدير عبر .env، تخطي الإنشاء التلقائي.')
+            return
+
         admin = models.User.query.filter_by(role='admin').first()
         if not admin:
             admin = models.User(
