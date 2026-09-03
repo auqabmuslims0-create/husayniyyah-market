@@ -140,8 +140,14 @@ def serialize_notification(notif):
         'title': notif.title,
         'message': notif.message,
         'link': notif.link,
+        'type': notif.type,
+        'priority': notif.priority,
+        'icon': notif.icon,
         'is_read': notif.is_read,
-        'created_at': notif.created_at.strftime('%Y-%m-%d %H:%M') if notif.created_at else None
+        'extra_data': notif.extra_data,
+        'created_at': notif.created_at.strftime('%Y-%m-%d %H:%M') if notif.created_at else None,
+        'read_at': notif.read_at.strftime('%Y-%m-%d %H:%M') if notif.read_at else None,
+        'expires_at': notif.expires_at.strftime('%Y-%m-%d %H:%M') if notif.expires_at else None
     }
 
 def is_admin(user):

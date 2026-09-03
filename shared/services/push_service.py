@@ -9,7 +9,6 @@ from utils import get_setting, set_setting
 DEFAULT_VAPID_SUBJECT = "mailto:admin@example.com"
 
 def get_or_create_vapid_keys():
-    """جلب أو إنشاء مفاتيح VAPID وحفظها في الإعدادات."""
     public_key = get_setting('vapid_public_key')
     private_key = get_setting('vapid_private_key')
     if public_key and private_key:
@@ -25,11 +24,9 @@ def get_or_create_vapid_keys():
     return public_key, private_key
 
 def get_vapid_subject():
-    """جلب موضوع VAPID من الإعدادات أو استخدام الافتراضي."""
     return get_setting('vapid_subject', DEFAULT_VAPID_SUBJECT)
 
 def send_web_push(subscription_info, payload):
-    """إرسال إشعار Push لاشتراك معين."""
     try:
         public_key, private_key = get_or_create_vapid_keys()
         vapid_subject = get_vapid_subject()
@@ -50,7 +47,6 @@ def send_web_push(subscription_info, payload):
         return False
 
 def send_to_user(user_id, notification):
-    """إرسال إشعار Push لجميع اشتراكات المستخدم."""
     subs = models.PushSubscription.query.filter_by(user_id=user_id).all()
     if not subs:
         return 0
@@ -81,7 +77,6 @@ def send_to_user(user_id, notification):
             if e.response and e.response.status_code in [404, 410]:
                 invalid_subs.append(sub)
 
-    # حذف الاشتراكات غير الصالحة دفعة واحدة
     if invalid_subs:
         for sub in invalid_subs:
             db.session.delete(sub)
@@ -90,8 +85,20 @@ def send_to_user(user_id, notification):
     return count_sent
 
 def send_to_users(user_ids, notification):
-    """إرسال إشعار Push لعدة مستخدمين."""
     count = 0
     for uid in user_ids:
         count += send_to_user(uid, notification)
     return count
+
+def cleanup_invalid_subscriptions():
+    """حذف الاشتراكات غير الصالحة (تُستدعى دورياً)."""
+    subs = models.PushSubscription.query.all()
+    invalid_ids = []
+    for sub in subs:
+        # يمكن التحقق عبر إرسال اختبار، لكن نكتفي بالتحقق من وجود endpoint
+        # يمكن استخدام طريقة أكثر دقة، لكن نكتفي بالحذف حسب endpoint فارغ أو تالف
+        if not sub.endpoint.startswith('http'):
+            invalid_ids.append(sub.id)
+    if invalid_ids:
+        models.PushSubscription.query.filter(models.PushSubscription.id.in_(invalid_ids)).delete(synchronize_session=False)
+        db.session.commit()

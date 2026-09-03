@@ -18,6 +18,32 @@ def account():
         return redirect(url_for('auth.login'))
     return render_template('customer/account.html', user=user)
 
+@auth_bp.route('/account/theme', methods=['POST'])
+@login_required
+def update_theme_preference():
+    """تحديث تفضيل الوضع الداكن للمستخدم الحالي."""
+    user = db.session.get(models.User, session['user_id'])
+    if not user:
+        return jsonify({'status': 'error', 'message': 'غير مسموح'}), 401
+
+    data = request.get_json(silent=True) or {}
+    dark_mode = data.get('dark_mode', None)
+
+    if dark_mode is None:
+        return jsonify({'status': 'error', 'message': 'قيمة غير صالحة'}), 400
+
+    # تحويل القيم النصية إلى منطقية
+    if isinstance(dark_mode, str):
+        dark_mode = dark_mode.lower() == 'true'
+    if not isinstance(dark_mode, bool):
+        return jsonify({'status': 'error', 'message': 'قيمة غير صالحة'}), 400
+
+    user.dark_mode = dark_mode
+    db.session.commit()
+    session['dark_mode'] = dark_mode  # تخزين مؤقت في الجلسة للاستخدام الفوري
+
+    return jsonify({'status': 'success', 'dark_mode': user.dark_mode})
+
 @auth_bp.route('/api/profile/sync', methods=['POST'])
 @login_required
 def profile_sync():

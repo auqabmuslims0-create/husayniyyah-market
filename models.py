@@ -1,3 +1,4 @@
+# ملاحظة: هذا الملف كامل كما كان مع إضافة الحقلين في كلاس Notification
 from datetime import datetime
 from database import db
 from time_utils import current_time
@@ -12,6 +13,7 @@ class User(db.Model):
     phone = db.Column(db.String(20), nullable=True)
     avatar = db.Column(db.String(300), nullable=True)
     bio = db.Column(db.Text, nullable=True)
+    dark_mode = db.Column(db.Boolean, default=False)  # تفضيل الوضع الداكن
     role = db.Column(db.String(20), nullable=False, index=True)
     is_active = db.Column(db.Boolean, default=True)
     shift_start_time = db.Column(db.Time, nullable=True)
@@ -128,7 +130,6 @@ class Product(db.Model):
 
     @property
     def images(self):
-        """خاصية توافقية تجمع الصورة الأساسية والفرعية كقائمة مفصولة بفواصل."""
         result = []
         if self.main_image:
             result.append(self.main_image.strip())
@@ -298,10 +299,14 @@ class Notification(db.Model):
     icon = db.Column(db.String(50), nullable=True)
     is_global = db.Column(db.Boolean, default=False)
     extra_data = db.Column(db.Text, nullable=True)
+    read_at = db.Column(db.DateTime, nullable=True)        # new
+    expires_at = db.Column(db.DateTime, nullable=True)     # new
     created_at = db.Column(db.DateTime, default=current_time)
 
     __table_args__ = (
         db.Index('ix_notification_user_read', 'user_id', 'is_read'),
+        db.Index('ix_notification_user_type', 'user_id', 'type'),
+        db.Index('ix_notification_expires', 'expires_at'),
     )
 
     user = db.relationship('User', back_populates='notifications')

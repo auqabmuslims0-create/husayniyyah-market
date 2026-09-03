@@ -1,7 +1,7 @@
 import sys
 import os
 import secrets
-import time  # أُضيف لاستخدامه في التخزين المؤقت
+import time
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'shared'))
@@ -34,6 +34,9 @@ from customer.offers import offers_bp
 from customer.services import services_bp
 from customer.account import account_bp
 from customer.cart import cart_bp
+
+# استيراد نظام الإشعارات الجديد
+from notifications import notifications_bp
 
 app = Flask(__name__)
 
@@ -69,7 +72,6 @@ def get_secret_key():
     key = os.environ.get('SECRET_KEY')
     if key:
         return key
-    # في بيئة التطوير فقط نستخدم ملف
     if os.environ.get('FLASK_ENV') != 'production':
         key_file = os.path.join(app.instance_path, '.secret_key')
         if os.path.exists(key_file):
@@ -83,7 +85,6 @@ def get_secret_key():
         return key
     raise RuntimeError('SECRET_KEY must be set in production environment')
 
-# تعيين SECRET_KEY
 app.config['SECRET_KEY'] = get_secret_key()
 
 def get_jwt_secret_key():
@@ -103,7 +104,6 @@ def get_jwt_secret_key():
         return key
     raise RuntimeError('JWT_SECRET_KEY must be set in production environment')
 
-# تعيين JWT_SECRET_KEY
 app.config['JWT_SECRET_KEY'] = get_jwt_secret_key()
 
 # إعداد قاعدة البيانات مع دعم PostgreSQL
@@ -121,8 +121,6 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 db.init_app(app)
 migrate = Migrate(app, db)
 
-# تم إزالة db.create_all() من هنا؛ سيتم استخدام ترحيلات Flask-Migrate في الإنتاج
-
 # تسجيل Blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(store_bp)
@@ -138,6 +136,7 @@ app.register_blueprint(offers_bp)
 app.register_blueprint(services_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(cart_bp)
+app.register_blueprint(notifications_bp)  # تسجيل نظام الإشعارات
 
 # إنشاء المدير الافتراضي كأمر Flask مخصص
 @app.cli.command("create-admin")
@@ -225,7 +224,9 @@ def inject_notifications_count():
     if cached and (current_time - cached['timestamp'] < CACHE_TIMEOUT):
         return dict(unread_notifications=cached['count'])
 
-    unread_count = models.Notification.query.filter_by(user_id=user_id, is_read=False).count()
+    # استخدام NotificationService بدلاً من الاستعلام المباشر
+    from shared.services.notification_service import NotificationService
+    unread_count = NotificationService.get_unread_count(user_id)
     _notifications_cache[user_id] = {'count': unread_count, 'timestamp': current_time}
     return dict(unread_notifications=unread_count)
 
@@ -265,7 +266,7 @@ def inject_show_bottom_nav():
             'stores.stores_page',
             'stores.store_public',
             'stores.product_public',
-            'account.notifications',
+            'notifications.notifications',   # إضافة مسار الإشعارات
             'account.favorites'
         ]
         if endpoint in allowed_customer_endpoints:

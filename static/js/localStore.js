@@ -1,5 +1,5 @@
 /**
- * LocalStore - إدارة السلة والمفضلة والملف الشخصي محلياً مع مزامنة خادم
+ * LocalStore - إدارة السلة والمفضلة والملف الشخصي والوضع الداكن محلياً مع مزامنة خادم
  * يعتمد على OfflineDB لتخزين بيانات المنتجات والمتاجر في IndexedDB
  * تم تحسين sync بإضافة debounce لتقليل الطلبات المتكررة.
  */
@@ -8,47 +8,99 @@ const LocalStore = (function() {
     const FAVORITES_KEY = 'local_favorites';
     const PRODUCTS_CACHE_KEY = 'local_products_cache';
     const PROFILE_KEY = 'local_profile';
+    const THEME_KEY = 'theme';
 
-    // متغيرات التحكم في المزامنة
     let debounceTimer = null;
     let isSyncing = false;
-    const DEBOUNCE_DELAY = 500; // مللي ثانية
+    const DEBOUNCE_DELAY = 500;
 
-    function getCart() {
+    // ==================== الوضع الداكن ====================
+    function getTheme() {
         try {
-            return JSON.parse(localStorage.getItem(CART_KEY)) || {};
+            return localStorage.getItem(THEME_KEY) || 'system';
         } catch (e) {
-            return {};
+            return 'system';
         }
     }
 
-    function setCart(cart) {
-        localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    function applyTheme(theme) {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = theme === 'dark' || (theme === 'system' && prefersDark);
+
+        // نطبق على html و body معًا
+        document.documentElement.classList.toggle('dark-mode', isDark);
+        if (document.body) {
+            document.body.classList.toggle('dark-mode', isDark);
+        }
     }
+
+    function setTheme(theme) {
+        localStorage.setItem(THEME_KEY, theme);
+        applyTheme(theme);
+        // مزامنة مع الخادم إذا كان المستخدم مسجلاً
+        if (window.csrfToken) {
+            const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            fetch('/account/theme', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': window.csrfToken
+                },
+                body: JSON.stringify({ dark_mode: isDark })
+            }).catch(err => console.warn('Theme sync failed:', err));
+        }
+    }
+
+    function toggleTheme() {
+        const current = getTheme();
+        if (current === 'dark') setTheme('light');
+        else if (current === 'light') setTheme('system');
+        else setTheme('dark');
+    }
+
+    function updateThemeButton() {
+        const themeBtn = document.getElementById('sidebarThemeToggle');
+        if (!themeBtn) return;
+        const current = getTheme();
+        const icon = themeBtn.querySelector('i');
+        const label = themeBtn.querySelector('span') || themeBtn;
+        if (current === 'dark') {
+            if (icon) icon.className = 'bi bi-sun ms-1';
+            label.textContent = 'الوضع الفاتح';
+        } else if (current === 'light') {
+            if (icon) icon.className = 'bi bi-moon-stars ms-1';
+            label.textContent = 'الوضع الداكن';
+        } else {
+            if (icon) icon.className = 'bi bi-circle-half ms-1';
+            label.textContent = 'تلقائي';
+        }
+    }
+
+    function initTheme() {
+        applyTheme(getTheme());
+        updateThemeButton();
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (getTheme() === 'system') {
+                applyTheme('system');
+            }
+        });
+    }
+
+    // ==================== السلة والمفضلة ====================
+    function getCart() {
+        try { return JSON.parse(localStorage.getItem(CART_KEY)) || {}; } catch (e) { return {}; }
+    }
+    function setCart(cart) { localStorage.setItem(CART_KEY, JSON.stringify(cart)); }
 
     function getFavorites() {
-        try {
-            return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || { products: [], stores: [] };
-        } catch (e) {
-            return { products: [], stores: [] };
-        }
+        try { return JSON.parse(localStorage.getItem(FAVORITES_KEY)) || { products: [], stores: [] }; } catch (e) { return { products: [], stores: [] }; }
     }
-
-    function setFavorites(favs) {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
-    }
+    function setFavorites(favs) { localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs)); }
 
     function getProductsCache() {
-        try {
-            return JSON.parse(localStorage.getItem(PRODUCTS_CACHE_KEY)) || {};
-        } catch (e) {
-            return {};
-        }
+        try { return JSON.parse(localStorage.getItem(PRODUCTS_CACHE_KEY)) || {}; } catch (e) { return {}; }
     }
-
-    function setProductsCache(cache) {
-        localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(cache));
-    }
+    function setProductsCache(cache) { localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify(cache)); }
 
     function cacheProduct(product) {
         const cache = getProductsCache();
@@ -61,7 +113,6 @@ const LocalStore = (function() {
             store_id: product.store_id || (product.store && product.store.id) || null
         };
         setProductsCache(cache);
-
         if (typeof OfflineDB !== 'undefined') {
             OfflineDB.saveProduct(product).catch(err => console.warn('OfflineDB saveProduct failed:', err));
         }
@@ -80,16 +131,9 @@ const LocalStore = (function() {
     }
 
     function getProfile() {
-        try {
-            return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null;
-        } catch (e) {
-            return null;
-        }
+        try { return JSON.parse(localStorage.getItem(PROFILE_KEY)) || null; } catch (e) { return null; }
     }
-
-    function setProfile(profile) {
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-    }
+    function setProfile(profile) { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); }
 
     function cacheProfile(user) {
         if (!user) return;
@@ -101,7 +145,8 @@ const LocalStore = (function() {
             bio: user.bio || '',
             avatar: user.avatar || '',
             public_id: user.public_id || '',
-            role: user.role || ''
+            role: user.role || '',
+            dark_mode: user.dark_mode || false
         });
     }
 
@@ -167,36 +212,26 @@ const LocalStore = (function() {
             const csrfToken = window.csrfToken || '';
             await fetch('/api/cart/sync', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
-                },
+                headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
                 body: JSON.stringify({ cart })
             });
             await fetch('/api/favorites/sync', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
-                },
+                headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
                 body: JSON.stringify({ favorites: favs })
             });
             const profile = getProfile();
-            if (profile) {
-                await syncProfile(profile);
-            }
+            if (profile) await syncProfile(profile);
         } catch (err) {
             console.log('Local sync failed:', err);
         } finally {
             isSyncing = false;
         }
-        // مزامنة الطلبات المعلقة بعد نجاح المزامنة الأساسية
         await syncPendingOrders();
     }
 
     function sync() {
         if (!navigator.onLine) return;
-        // إلغاء المؤقت السابق وإعادة الجدولة
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
             debounceTimer = null;
@@ -210,10 +245,7 @@ const LocalStore = (function() {
             const csrfToken = window.csrfToken || '';
             const response = await fetch('/api/profile/sync', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
-                },
+                headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
                 body: JSON.stringify(profile)
             });
             return response.ok;
@@ -228,9 +260,7 @@ const LocalStore = (function() {
         const key = String(productId);
         cart[key] = (cart[key] || 0) + qty;
         setCart(cart);
-        if (productData) {
-            cacheProduct(productData);
-        }
+        if (productData) cacheProduct(productData);
         updateCartBadges();
         sync();
     }
@@ -238,33 +268,24 @@ const LocalStore = (function() {
     function updateCart(productId, qty) {
         const cart = getCart();
         const key = String(productId);
-        if (qty < 1) {
-            delete cart[key];
-        } else {
-            cart[key] = qty;
-        }
+        if (qty < 1) delete cart[key];
+        else cart[key] = qty;
         setCart(cart);
         updateCartBadges();
         sync();
     }
 
-    function removeFromCart(productId) {
-        updateCart(productId, 0);
-    }
+    function removeFromCart(productId) { updateCart(productId, 0); }
 
     function toggleFavorite(type, id, itemData) {
         const favs = getFavorites();
         const key = type === 'product' ? 'products' : 'stores';
         const index = favs[key].indexOf(id);
-        if (index > -1) {
-            favs[key].splice(index, 1);
-        } else {
+        if (index > -1) favs[key].splice(index, 1);
+        else {
             favs[key].push(id);
-            if (itemData && type === 'product') {
-                cacheProduct(itemData);
-            } else if (itemData && type === 'store') {
-                cacheStore(itemData);
-            }
+            if (itemData && type === 'product') cacheProduct(itemData);
+            else if (itemData && type === 'store') cacheStore(itemData);
         }
         setFavorites(favs);
         sync();
@@ -276,7 +297,6 @@ const LocalStore = (function() {
         return favs[key].includes(id);
     }
 
-    // عند عودة الاتصال، مزامنة فورية
     window.addEventListener('online', () => {
         if (debounceTimer) {
             clearTimeout(debounceTimer);
@@ -285,7 +305,14 @@ const LocalStore = (function() {
         performSync();
     });
 
-    // عند الإقلاع، مزامنة إذا كان متصلاً
+    // تهيئة الثيم عند التحميل
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTheme);
+    } else {
+        initTheme();
+    }
+
+    // مزامنة عند التحميل
     if (document.readyState === 'complete') {
         sync();
     } else {
@@ -295,24 +322,10 @@ const LocalStore = (function() {
     }
 
     return {
-        getCart,
-        setCart,
-        getFavorites,
-        setFavorites,
-        getProductsCache,
-        updateCartBadges,
-        sync,
-        syncProfile,
-        addToCart,
-        updateCart,
-        removeFromCart,
-        toggleFavorite,
-        isFavorite,
-        cacheProduct,
-        cacheStores,
-        cacheStore,
-        getProfile,
-        setProfile,
-        cacheProfile
+        getTheme, setTheme, toggleTheme, updateThemeButton, applyTheme,
+        getCart, setCart, getFavorites, setFavorites, getProductsCache,
+        updateCartBadges, sync, syncProfile, addToCart, updateCart,
+        removeFromCart, toggleFavorite, isFavorite, cacheProduct,
+        cacheStores, cacheStore, getProfile, setProfile, cacheProfile
     };
 })();

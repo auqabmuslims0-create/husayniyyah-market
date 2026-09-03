@@ -43,7 +43,7 @@
   <link href="{{ url_for('static', filename='css/pages.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/cards.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/responsive.css') }}" rel="stylesheet">
-  <link href="{{ url_for('static', filename='css/dark-mode.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/themes/dark/dark-mode.css') }}" rel="stylesheet">
 
   <script>
     (function() {
@@ -52,9 +52,15 @@
       }
     })();
     (function() {
-      if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark-mode');
+      var theme = localStorage.getItem('theme') || 'system';
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var isDark = theme === 'dark' || (theme === 'system' && prefersDark);
+      document.documentElement.classList.toggle('dark-mode', isDark);
+      function applyToBody() {
+        if (document.body) document.body.classList.toggle('dark-mode', isDark);
       }
+      if (document.body) applyToBody();
+      else document.addEventListener('DOMContentLoaded', applyToBody);
     })();
   </script>
 
@@ -81,21 +87,12 @@
       -webkit-backdrop-filter: blur(8px);
       box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
-    .connection-indicator.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    .connection-indicator svg {
-      width: 18px;
-      height: 18px;
-    }
+    .connection-indicator.show { opacity: 1; pointer-events: auto; }
+    .connection-indicator svg { width: 18px; height: 18px; }
 
     #appSplash {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0; width: 100%; height: 100%;
       background: #f7f4ef;
       display: flex;
       flex-direction: column;
@@ -105,59 +102,79 @@
       opacity: 1;
       transition: opacity 0.5s ease;
     }
-    #appSplash.fade-out {
-      opacity: 0;
+    #appSplash.fade-out { opacity: 0; pointer-events: none; }
+    #appSplash img { width: 120px; height: 120px; border-radius: 30px; margin-bottom: 20px; animation: pulse 2s infinite; }
+    #appSplash h1 { color: #2d2d2d; font-family: 'Tajawal', sans-serif; font-weight: bold; font-size: 2rem; margin: 0; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+    input, textarea, select, [contenteditable="true"] { position: relative; z-index: 1; }
+    .modal { z-index: 3000 !important; pointer-events: auto !important; }
+    .modal-backdrop { z-index: 2990 !important; }
+    .modal-dialog { z-index: 3001 !important; pointer-events: auto !important; }
+    .modal-content { pointer-events: auto !important; }
+    .offcanvas { z-index: 1045 !important; }
+
+    .toast-container-top {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
       pointer-events: none;
+      width: auto;
+      max-width: 90vw;
     }
-    #appSplash img {
-      width: 120px;
-      height: 120px;
-      border-radius: 30px;
-      margin-bottom: 20px;
-      animation: pulse 2s infinite;
-    }
-    #appSplash h1 {
-      color: #2d2d2d;
-      font-family: 'Tajawal', sans-serif;
-      font-weight: bold;
-      font-size: 2rem;
+    .toast-container-top .toast {
+      pointer-events: auto;
       margin: 0;
-    }
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-      100% { transform: scale(1); }
+      min-width: 250px;
+      max-width: 400px;
+      width: auto;
     }
 
-    /* إصلاح طبقات العرض بشكل نهائي */
-    input, textarea, select, [contenteditable="true"] {
-      position: relative;
-      z-index: 1;
+    /* توست عام */
+    .toast-modern .toast-body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      padding: 10px 15px;
     }
-    .modal {
-      z-index: 3000 !important;
-      pointer-events: auto !important;
+    .toast-modern .toast-body .toast-message {
+      flex: 1;
+      text-align: center;
     }
-    .modal-backdrop {
-      z-index: 2990 !important;
+    .toast-modern .toast-body .toast-image {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.5);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    .modal-dialog {
-      z-index: 3001 !important;
-      pointer-events: auto !important;
+    body.dark-mode .toast-modern .toast-body .toast-image {
+      border-color: rgba(255,255,255,0.2);
     }
-    .modal-content {
-      pointer-events: auto !important;
-    }
-    .offcanvas {
-      z-index: 1045 !important;
-    }
-    .toast-container-top {
-      z-index: 2000 !important;
+    /* أيقونات رسائل الفلاش */
+    .toast-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
     }
   </style>
   {% block head %}{% endblock %}
 </head>
 <body class="{% if show_bottom_nav %}with-bottom-nav{% else %}no-bottom-nav{% endif %}">
+  <script>
+    if (document.documentElement.classList.contains('dark-mode')) {
+      document.body.classList.add('dark-mode');
+    }
+  </script>
 
   <div id="appSplash" style="display: none;">
     <img src="{{ url_for('static', filename='icons/icon-512.png') }}" alt="سوق الحسينية">
@@ -217,16 +234,21 @@
             <li><a href="{{ url_for('market.market') }}" class="sidebar-menu-item"><i class="bi bi-shop ms-1"></i> السوق</a></li>
             <li><a href="{{ url_for('cart.cart') }}" class="sidebar-menu-item"><i class="bi bi-cart ms-1"></i> سلة المشتريات</a></li>
             <li><a href="{{ url_for('account.favorites') }}" class="sidebar-menu-item"><i class="bi bi-heart ms-1"></i> المفضلة</a></li>
-            <li><a href="{{ url_for('account.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
+            <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
             <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
           {% else %}
             <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
-            <li><a href="{{ url_for('account.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
+            <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
           {% endif %}
         {% else %}
           <li><a href="{{ url_for('auth.login') }}" class="sidebar-menu-item"><i class="bi bi-box-arrow-in-right ms-1"></i> تسجيل الدخول</a></li>
         {% endif %}
-        <li><button class="sidebar-menu-item w-100" id="sidebarThemeToggle"><i class="bi bi-moon-stars ms-1"></i> الوضع الداكن</button></li>
+        <li>
+          <button class="sidebar-menu-item w-100" id="sidebarThemeToggle">
+            <i class="bi bi-moon-stars ms-1"></i>
+            <span>الوضع الداكن</span>
+          </button>
+        </li>
         <li><a href="{{ url_for('services.services_page') }}" class="sidebar-menu-item"><i class="bi bi-info-circle ms-1"></i> حول / خدمات</a></li>
         {% if current_user %}
           <li><a href="{{ url_for('auth.logout') }}" class="sidebar-menu-item text-danger"><i class="bi bi-box-arrow-left ms-1"></i> تسجيل الخروج</a></li>
@@ -246,12 +268,15 @@
           <div class="toast align-items-center toast-modern border-0" role="alert" data-bs-delay="4000" data-bs-autohide="true">
             <div class="d-flex">
               <div class="toast-body">
-                {% if category == 'success' %}<i class="bi bi-check-circle-fill me-1 text-success"></i>
-                {% elif category == 'error' or category == 'danger' %}<i class="bi bi-exclamation-circle-fill me-1 text-danger"></i>
-                {% else %}<i class="bi bi-info-circle-fill me-1 text-info"></i>{% endif %}
-                {{ msg }}
+                {% if category == 'success' %}
+                  <i class="bi bi-check-circle-fill text-success toast-icon"></i>
+                {% elif category == 'error' or category == 'danger' %}
+                  <i class="bi bi-exclamation-circle-fill text-danger toast-icon"></i>
+                {% else %}
+                  <i class="bi bi-info-circle-fill text-info toast-icon"></i>
+                {% endif %}
+                <span class="toast-message">{{ msg }}</span>
               </div>
-              <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="إغلاق"></button>
             </div>
           </div>
         {% endfor %}
@@ -283,20 +308,20 @@
   <script>
     var csrfToken = "{{ csrf_token }}";
 
-    function showToast(message, type = 'info') {
+    function showToast(message, type = 'info', image = null) {
       if (type === 'danger') type = 'error';
       const container = document.getElementById('toastContainerTop');
       if (!container) return;
       const toast = document.createElement('div');
-      toast.className = `toast align-items-center toast-modern border-0`;
+      toast.className = 'toast align-items-center toast-modern border-0';
       toast.setAttribute('role', 'alert');
       toast.setAttribute('data-bs-delay', '4000');
       toast.setAttribute('data-bs-autohide', 'true');
-      let iconHtml = '';
-      if (type === 'success') iconHtml = '<i class="bi bi-check-circle-fill me-1 text-success"></i>';
-      else if (type === 'error') iconHtml = '<i class="bi bi-exclamation-circle-fill me-1 text-danger"></i>';
-      else iconHtml = '<i class="bi bi-info-circle-fill me-1 text-info"></i>';
-      toast.innerHTML = `<div class="d-flex"><div class="toast-body">${iconHtml}${message}</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="إغلاق"></button></div>`;
+      let imageHtml = '';
+      if (image) {
+        imageHtml = `<img src="${image}" class="toast-image" alt="">`;
+      }
+      toast.innerHTML = `<div class="d-flex"><div class="toast-body">${imageHtml}<span class="toast-message">${message}</span></div></div>`;
       container.prepend(toast);
       const bsToast = new bootstrap.Toast(toast, { delay: 4000, autohide: true });
       bsToast.show();
@@ -445,15 +470,16 @@
 
       LocalStore.updateCartBadges();
       requestNotificationPermission();
-    });
 
-    const themeBtn = document.getElementById('sidebarThemeToggle');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => {
-        document.body.classList.toggle('dark-mode');
-        localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-      });
-    }
+      LocalStore.updateThemeButton();
+      const themeBtn = document.getElementById('sidebarThemeToggle');
+      if (themeBtn) {
+        themeBtn.addEventListener('click', function() {
+          LocalStore.toggleTheme();
+          LocalStore.updateThemeButton();
+        });
+      }
+    });
 
     function fetchUpdates() {
       fetch('/api/updates', {headers: {'Accept': 'application/json'}})
@@ -496,7 +522,7 @@
           console.log('Service Worker registered');
           const permission = await Notification.requestPermission();
           if (permission === 'granted') {
-            const vapidResponse = await fetch('/api/push/vapid_public_key');
+            const vapidResponse = await fetch('/api/notifications/push/vapid_public_key');
             const vapidData = await vapidResponse.json();
             const vapidPublicKey = vapidData.public_key;
             const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
@@ -504,7 +530,7 @@
               userVisibleOnly: true,
               applicationServerKey: convertedVapidKey
             });
-            await fetch('/api/push/subscribe', {
+            await fetch('/api/notifications/push/subscribe', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -532,7 +558,6 @@
     }
   </script>
 
-  <!-- مودال تأكيد موحد -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
