@@ -21,6 +21,7 @@ body.dark-mode .navbar-custom {
     font-size: 1.3rem;
     display: flex;
     align-items: center;
+    text-decoration: none;
 }
 body { padding-top: 80px; }
 
@@ -34,13 +35,18 @@ body { padding-top: 80px; }
     margin: 0;
     cursor: pointer;
     transition: transform 0.2s ease;
+    position: relative;
 }
 .burger-btn:hover { transform: scale(1.1); }
+.theme-toggle-btn {
+    font-size: 1.5rem;
+    margin-left: 5px;
+}
 
 /* ========== القائمة الجانبية الزجاجية ========== */
 .modern-sidebar {
     width: 30% !important;
-    max-width: 250px;
+    max-width: 280px;
     background: var(--glass-bg-light);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
@@ -103,6 +109,15 @@ body.dark-mode .sidebar-menu-item {
 }
 body.dark-mode .sidebar-menu-item:hover {
     background: rgba(201, 162, 39, 0.2);
+    color: #fff;
+}
+.sidebar-menu-item.active {
+    background: rgba(46, 93, 52, 0.15);
+    color: var(--primary-dark);
+    font-weight: 700;
+}
+body.dark-mode .sidebar-menu-item.active {
+    background: rgba(201, 162, 39, 0.25);
     color: #fff;
 }
 
@@ -322,7 +337,7 @@ body.dark-mode .filter-sidebar .offcanvas-header {
     .bottom-nav-item i { font-size: 1.4rem; }
     .cart-circle { width: 56px; height: 56px; margin-top: -24px; }
     .cart-circle i { font-size: 24px; }
-    .modern-sidebar, .filter-sidebar { width: 75% !important; margin: 4px; }
+    .modern-sidebar, .filter-sidebar { width: 85% !important; margin: 4px; }
 }
 
 /* ========== أزرار زجاجية ========== */

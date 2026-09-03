@@ -106,13 +106,10 @@ database_url = os.environ.get('DATABASE_URL')
 
 if database_url:
     database_url = database_url.strip()
-    # استبدال postgres:// بـ postgresql:// لتفادي مشاكل SQLAlchemy
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    # إذا كان الرابط لا يحتوي على منفذ واضح، نضيف المنفذ الافتراضي 5432
     parsed = urlparse(database_url)
     if parsed.scheme in ('postgresql', 'postgres') and parsed.port is None:
-        # إعادة بناء الرابط مع المنفذ الافتراضي 5432
         host = parsed.hostname or ''
         netloc = f"{host}:5432"
         if parsed.username:
@@ -122,7 +119,6 @@ if database_url:
             netloc = f"{userinfo}@{netloc}"
         database_url = urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
 else:
-    # في حال عدم وجود DATABASE_URL نستخدم SQLite محليًا
     database_url = 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'husayniyyah.db')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
@@ -158,7 +154,6 @@ def create_admin_command():
     ensure_admin()
 
 def ensure_admin():
-    # ضمان وجود الجداول قبل أي استعلام
     with app.app_context():
         db.create_all()
         admin_username = os.environ.get('ADMIN_USERNAME')
@@ -265,29 +260,99 @@ def inject_csrf_token():
     return dict(csrf_token=session.get('_csrf_token', ''))
 
 @app.context_processor
-def inject_show_bottom_nav():
-    show_bottom_nav = False
+def inject_nav_items():
+    """توليد عناصر القائمة الجانبية بناءً على دور المستخدم والصفحة الحالية."""
+    user = g.user
     endpoint = request.endpoint
 
-    if g.user and g.user.role == 'customer':
-        allowed_customer_endpoints = [
-            'market.market',
-            'reels.reels',
-            'cart.cart',
-            'offers.offers_page',
-            'stores.stores_page',
-            'stores.store_public',
-            'stores.product_public',
-            'notifications.notifications',
-            'account.favorites'
-        ]
-        if endpoint in allowed_customer_endpoints:
-            show_bottom_nav = True
-    elif g.user and g.user.role == 'owner':
-        if endpoint == 'market.market':
-            show_bottom_nav = True
+    # إذا كان الطلب لـ API أو static أو ليس له endpoint، لا نرسل nav_items
+    if request.path.startswith('/api/') or request.path.startswith('/static/') or endpoint is None:
+        return dict(nav_items=[])
 
-    return dict(show_bottom_nav=show_bottom_nav)
+    nav_items = []
+
+    # عناصر مشتركة للزوار غير المسجلين
+    if user is None:
+        nav_items.append({'type': 'link', 'url': url_for('auth.login'), 'label': 'تسجيل الدخول', 'icon': 'bi-box-arrow-in-right', 'active': endpoint == 'auth.login'})
+        nav_items.append({'type': 'link', 'url': url_for('services.services_page'), 'label': 'حول / خدمات', 'icon': 'bi-info-circle', 'active': endpoint == 'services.services_page'})
+        return dict(nav_items=nav_items)
+
+    # عناصر حسب الدور
+    if user.role == 'admin':
+        nav_items.append({'type': 'link', 'url': url_for('admin.admin_dashboard'), 'label': 'لوحة المدير', 'icon': 'bi-speedometer2', 'active': endpoint == 'admin.admin_dashboard'})
+        nav_items.append({'type': 'divider'})
+        nav_items.append({'type': 'link', 'url': url_for('notifications.notifications'), 'label': 'الإشعارات', 'icon': 'bi-bell', 'badge': g.get('unread_notifications', 0), 'active': endpoint == 'notifications.notifications'})
+        nav_items.append({'type': 'link', 'url': url_for('auth.account'), 'label': 'الإعدادات', 'icon': 'bi-gear', 'active': endpoint == 'auth.account'})
+    elif user.role == 'owner':
+        nav_items.append({'type': 'link', 'url': url_for('store.my_stores'), 'label': 'متاجري', 'icon': 'bi-shop', 'active': endpoint == 'store.my_stores'})
+        nav_items.append({'type': 'link', 'url': url_for('market.market'), 'label': 'السوق', 'icon': 'bi-shop', 'active': endpoint == 'market.market'})
+        nav_items.append({'type': 'divider'})
+        nav_items.append({'type': 'link', 'url': url_for('notifications.notifications'), 'label': 'الإشعارات', 'icon': 'bi-bell', 'badge': g.get('unread_notifications', 0), 'active': endpoint == 'notifications.notifications'})
+        nav_items.append({'type': 'link', 'url': url_for('auth.account'), 'label': 'الإعدادات', 'icon': 'bi-gear', 'active': endpoint == 'auth.account'})
+    elif user.role == 'delivery':
+        nav_items.append({'type': 'link', 'url': url_for('delivery.delivery_dashboard'), 'label': 'لوحة المندوب', 'icon': 'bi-truck', 'active': endpoint == 'delivery.delivery_dashboard'})
+        nav_items.append({'type': 'divider'})
+        nav_items.append({'type': 'link', 'url': url_for('notifications.notifications'), 'label': 'الإشعارات', 'icon': 'bi-bell', 'badge': g.get('unread_notifications', 0), 'active': endpoint == 'notifications.notifications'})
+        nav_items.append({'type': 'link', 'url': url_for('auth.account'), 'label': 'الإعدادات', 'icon': 'bi-gear', 'active': endpoint == 'auth.account'})
+    elif user.role == 'customer':
+        nav_items.append({'type': 'link', 'url': url_for('market.market'), 'label': 'السوق', 'icon': 'bi-shop', 'active': endpoint == 'market.market'})
+        nav_items.append({'type': 'link', 'url': url_for('cart.cart'), 'label': 'سلة المشتريات', 'icon': 'bi-cart', 'active': endpoint == 'cart.cart'})
+        nav_items.append({'type': 'link', 'url': url_for('account.favorites'), 'label': 'المفضلة', 'icon': 'bi-heart', 'active': endpoint == 'account.favorites'})
+        nav_items.append({'type': 'link', 'url': url_for('notifications.notifications'), 'label': 'الإشعارات', 'icon': 'bi-bell', 'badge': g.get('unread_notifications', 0), 'active': endpoint == 'notifications.notifications'})
+        nav_items.append({'type': 'link', 'url': url_for('auth.account'), 'label': 'الإعدادات', 'icon': 'bi-gear', 'active': endpoint == 'auth.account'})
+        nav_items.append({'type': 'link', 'url': url_for('services.services_page'), 'label': 'حول / خدمات', 'icon': 'bi-info-circle', 'active': endpoint == 'services.services_page'})
+    else:
+        # دور غير معروف
+        nav_items.append({'type': 'link', 'url': url_for('auth.account'), 'label': 'الإعدادات', 'icon': 'bi-gear', 'active': endpoint == 'auth.account'})
+
+    # عناصر مشتركة للجميع (زر الوضع الداكن وتسجيل الخروج)
+    nav_items.append({'type': 'divider'})
+    nav_items.append({'type': 'button', 'id': 'sidebarThemeToggle', 'label': 'الوضع الداكن', 'icon': 'bi-moon-stars'})
+    nav_items.append({'type': 'link', 'url': url_for('auth.logout'), 'label': 'تسجيل الخروج', 'icon': 'bi-box-arrow-left', 'active': False})
+
+    return dict(nav_items=nav_items)
+
+@app.context_processor
+def inject_show_bottom_nav():
+    """تحديد إظهار الشريط السفلي حسب الدور والصفحة."""
+    user = g.user
+    endpoint = request.endpoint
+
+    # لا نعرض الشريط السفلي في صفحات API أو static
+    if request.path.startswith('/api/') or request.path.startswith('/static/') or endpoint is None:
+        return dict(show_bottom_nav=False)
+
+    # قائمة الصفحات التي يظهر فيها الشريط السفلي للمستخدمين المسجلين (خاصة العملاء)
+    allowed_customer_endpoints = [
+        'market.market',
+        'reels.reels',
+        'cart.cart',
+        'offers.offers_page',
+        'stores.stores_page',
+        'stores.store_public',
+        'stores.product_public',
+        'notifications.notifications',
+        'account.favorites'
+    ]
+
+    # للزوار (غير مسجلين) يمكن عرض الشريط السفلي في الصفحات العامة
+    public_endpoints = [
+        'market.market', 'reels.reels', 'offers.offers_page', 'stores.stores_page',
+        'stores.store_public', 'stores.product_public', 'services.services_page'
+    ]
+
+    show = False
+    if user:
+        if user.role == 'customer' and endpoint in allowed_customer_endpoints:
+            show = True
+        elif user.role == 'owner' and endpoint == 'market.market':
+            show = True
+        # يمكن إضافة أدوار أخرى لاحقًا
+    else:
+        if endpoint in public_endpoints:
+            show = True
+
+    return dict(show_bottom_nav=show)
 
 @app.template_filter('format_price')
 def format_price(value):
@@ -340,7 +405,6 @@ if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(host='0.0.0.0', port=5000, debug=debug_mode)
 
-# تشغيل المجدول عند استيراد التطبيق في بيئة الإنتاج (مثل gunicorn)
 if os.environ.get('SCHEDULER_ENABLED') == '1':
     from scheduler import init_scheduler
     with app.app_context():

@@ -157,3 +157,30 @@
     </div>
 {% endif %}
 {%- endmacro %}
+
+{% macro render_nav_items(items) -%}
+<ul class="list-unstyled w-100">
+    {% for item in items %}
+        {% if item.type == 'link' %}
+        <li>
+            <a href="{{ item.url }}" class="sidebar-menu-item {% if item.active %}active{% endif %}">
+                {% if item.icon %}<i class="bi {{ item.icon }} ms-1"></i>{% endif %}
+                {{ item.label }}
+                {% if item.badge is defined and item.badge > 0 %}
+                    <span class="badge bg-warning text-dark ms-1">{{ item.badge }}</span>
+                {% endif %}
+            </a>
+        </li>
+        {% elif item.type == 'button' %}
+        <li>
+            <button class="sidebar-menu-item w-100" id="{{ item.id }}">
+                {% if item.icon %}<i class="bi {{ item.icon }} ms-1"></i>{% endif %}
+                <span>{{ item.label }}</span>
+            </button>
+        </li>
+        {% elif item.type == 'divider' %}
+        <li><hr class="my-2 border-{{ item.variant|default('light') }}"></li>
+        {% endif %}
+    {% endfor %}
+</ul>
+{%- endmacro %}

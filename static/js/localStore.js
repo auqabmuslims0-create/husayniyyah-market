@@ -56,23 +56,40 @@ const LocalStore = (function() {
         if (current === 'dark') setTheme('light');
         else if (current === 'light') setTheme('system');
         else setTheme('dark');
+        updateThemeButton();
     }
 
     function updateThemeButton() {
-        const themeBtn = document.getElementById('sidebarThemeToggle');
-        if (!themeBtn) return;
-        const current = getTheme();
-        const icon = themeBtn.querySelector('i');
-        const label = themeBtn.querySelector('span') || themeBtn;
-        if (current === 'dark') {
-            if (icon) icon.className = 'bi bi-sun ms-1';
-            label.textContent = 'الوضع الفاتح';
-        } else if (current === 'light') {
-            if (icon) icon.className = 'bi bi-moon-stars ms-1';
-            label.textContent = 'الوضع الداكن';
-        } else {
-            if (icon) icon.className = 'bi bi-circle-half ms-1';
-            label.textContent = 'تلقائي';
+        // تحديث زر القائمة الجانبية
+        const sidebarBtn = document.getElementById('sidebarThemeToggle');
+        if (sidebarBtn) {
+            const icon = sidebarBtn.querySelector('i');
+            const label = sidebarBtn.querySelector('span') || sidebarBtn;
+            const current = getTheme();
+            if (current === 'dark') {
+                if (icon) icon.className = 'bi bi-sun ms-1';
+                label.textContent = 'الوضع الفاتح';
+            } else if (current === 'light') {
+                if (icon) icon.className = 'bi bi-moon-stars ms-1';
+                label.textContent = 'الوضع الداكن';
+            } else {
+                if (icon) icon.className = 'bi bi-circle-half ms-1';
+                label.textContent = 'تلقائي';
+            }
+        }
+
+        // تحديث زر الشريط العلوي
+        const topBtn = document.getElementById('topbarThemeToggle');
+        if (topBtn) {
+            const icon = topBtn.querySelector('i');
+            const current = getTheme();
+            if (current === 'dark') {
+                if (icon) icon.className = 'bi bi-sun';
+            } else if (current === 'light') {
+                if (icon) icon.className = 'bi bi-moon-stars';
+            } else {
+                if (icon) icon.className = 'bi bi-circle-half';
+            }
         }
     }
 
@@ -194,7 +211,6 @@ const LocalStore = (function() {
                     } else {
                         const data = await response.json().catch(() => ({}));
                         console.warn('فشل إرسال الطلب المعلق:', data.message || response.status);
-                        // إذا كان الخطأ يتعلق بـ CSRF (403) نتوقف عن إعادة المحاولة حتى تحديث التوكن
                         if (response.status === 403) {
                             console.warn('CSRF token expired، توقف المزامنة');
                             break;
@@ -217,7 +233,6 @@ const LocalStore = (function() {
             const favs = getFavorites();
             const csrfToken = window.csrfToken || '';
 
-            // مزامنة السلة والمفضلة والملف الشخصي
             await fetch('/api/cart/sync', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},

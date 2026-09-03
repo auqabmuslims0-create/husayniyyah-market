@@ -201,12 +201,17 @@
   </div>
 
   <nav class="navbar navbar-custom fixed-top">
-    <div class="container-fluid d-flex justify-content-center align-items-center position-relative">
-      <button class="burger-btn position-absolute start-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu">
-        <i class="bi bi-list"></i>
-        <span class="notification-dot"></span>
-      </button>
-      <a class="navbar-brand mx-auto" href="{{ url_for('market.market') if current_user else url_for('auth.login') }}">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center">
+        <button class="burger-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-label="القائمة">
+          <i class="bi bi-list"></i>
+          <span class="notification-dot" id="navNotificationDot"></span>
+        </button>
+        <button class="burger-btn theme-toggle-btn ms-2" id="topbarThemeToggle" type="button" aria-label="تبديل الوضع الداكن">
+          <i class="bi bi-moon-stars"></i>
+        </button>
+      </div>
+      <a class="navbar-brand" href="{{ url_for('market.market') if current_user else url_for('auth.login') }}">
         <i class="bi bi-shop-fill me-2" style="font-size:1.5rem;"></i><span class="fw-bold">سوق الحسينية</span>
       </a>
     </div>
@@ -228,41 +233,45 @@
           <h6 class="fw-bold mb-0">{% if current_user %}{{ current_user.username }}{% else %}تسجيل الدخول{% endif %}</h6>
         </a>
       </div>
-      <ul class="list-unstyled w-100">
-        {% if current_user %}
-          {% if current_user.role == 'admin' %}
-            <li><a href="{{ url_for('admin.admin_dashboard') }}" class="sidebar-menu-item"><i class="bi bi-speedometer2 ms-1"></i> لوحة المدير</a></li>
-          {% endif %}
-          {% if current_user.role == 'owner' %}
-            <li><a href="{{ url_for('store.my_stores') }}" class="sidebar-menu-item"><i class="bi bi-shop ms-1"></i> متاجري</a></li>
-          {% endif %}
-          {% if current_user.role == 'delivery' %}
-            <li><a href="{{ url_for('delivery.delivery_dashboard') }}" class="sidebar-menu-item"><i class="bi bi-truck ms-1"></i> لوحة المندوب</a></li>
-          {% endif %}
-          {% if current_user.role == 'customer' %}
-            <li><a href="{{ url_for('market.market') }}" class="sidebar-menu-item"><i class="bi bi-shop ms-1"></i> السوق</a></li>
-            <li><a href="{{ url_for('cart.cart') }}" class="sidebar-menu-item"><i class="bi bi-cart ms-1"></i> سلة المشتريات</a></li>
-            <li><a href="{{ url_for('account.favorites') }}" class="sidebar-menu-item"><i class="bi bi-heart ms-1"></i> المفضلة</a></li>
-            <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
-            <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
+      {% if nav_items is defined and nav_items %}
+        {{ macros.render_nav_items(nav_items) }}
+      {% else %}
+        <ul class="list-unstyled w-100">
+          {% if current_user %}
+            {% if current_user.role == 'admin' %}
+              <li><a href="{{ url_for('admin.admin_dashboard') }}" class="sidebar-menu-item"><i class="bi bi-speedometer2 ms-1"></i> لوحة المدير</a></li>
+            {% endif %}
+            {% if current_user.role == 'owner' %}
+              <li><a href="{{ url_for('store.my_stores') }}" class="sidebar-menu-item"><i class="bi bi-shop ms-1"></i> متاجري</a></li>
+            {% endif %}
+            {% if current_user.role == 'delivery' %}
+              <li><a href="{{ url_for('delivery.delivery_dashboard') }}" class="sidebar-menu-item"><i class="bi bi-truck ms-1"></i> لوحة المندوب</a></li>
+            {% endif %}
+            {% if current_user.role == 'customer' %}
+              <li><a href="{{ url_for('market.market') }}" class="sidebar-menu-item"><i class="bi bi-shop ms-1"></i> السوق</a></li>
+              <li><a href="{{ url_for('cart.cart') }}" class="sidebar-menu-item"><i class="bi bi-cart ms-1"></i> سلة المشتريات</a></li>
+              <li><a href="{{ url_for('account.favorites') }}" class="sidebar-menu-item"><i class="bi bi-heart ms-1"></i> المفضلة</a></li>
+              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
+              <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
+            {% else %}
+              <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
+              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
+            {% endif %}
           {% else %}
-            <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
-            <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
+            <li><a href="{{ url_for('auth.login') }}" class="sidebar-menu-item"><i class="bi bi-box-arrow-in-right ms-1"></i> تسجيل الدخول</a></li>
           {% endif %}
-        {% else %}
-          <li><a href="{{ url_for('auth.login') }}" class="sidebar-menu-item"><i class="bi bi-box-arrow-in-right ms-1"></i> تسجيل الدخول</a></li>
-        {% endif %}
-        <li>
-          <button class="sidebar-menu-item w-100" id="sidebarThemeToggle">
-            <i class="bi bi-moon-stars ms-1"></i>
-            <span>الوضع الداكن</span>
-          </button>
-        </li>
-        <li><a href="{{ url_for('services.services_page') }}" class="sidebar-menu-item"><i class="bi bi-info-circle ms-1"></i> حول / خدمات</a></li>
-        {% if current_user %}
-          <li><a href="{{ url_for('auth.logout') }}" class="sidebar-menu-item text-danger"><i class="bi bi-box-arrow-left ms-1"></i> تسجيل الخروج</a></li>
-        {% endif %}
-      </ul>
+          <li>
+            <button class="sidebar-menu-item w-100" id="sidebarThemeToggle">
+              <i class="bi bi-moon-stars ms-1"></i>
+              <span>الوضع الداكن</span>
+            </button>
+          </li>
+          <li><a href="{{ url_for('services.services_page') }}" class="sidebar-menu-item"><i class="bi bi-info-circle ms-1"></i> حول / خدمات</a></li>
+          {% if current_user %}
+            <li><a href="{{ url_for('auth.logout') }}" class="sidebar-menu-item text-danger"><i class="bi bi-box-arrow-left ms-1"></i> تسجيل الخروج</a></li>
+          {% endif %}
+        </ul>
+      {% endif %}
     </div>
   </div>
 
@@ -313,10 +322,10 @@
   <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
   <script src="{{ url_for('static', filename='js/offlineDB.js') }}"></script>
   <script src="{{ url_for('static', filename='js/localStore.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
 
   <script>
     var csrfToken = "{{ csrf_token }}";
-    // تعيين حالة المصادقة حتى لا يحاول LocalStore مزامنة الثيم إذا لم يكن مسجلاً
     window.isAuthenticated = {{ 'true' if current_user else 'false' }};
 
     function showToast(message, type = 'info', image = null) {
@@ -358,7 +367,6 @@
     }
 
     async function toggleFavoriteProduct(productId, btnElement) {
-        // نمرر بيانات المنتج إذا كانت متاحة في العنصر
         const productData = {
             id: productId,
             name: btnElement.dataset.name || '',
@@ -427,13 +435,10 @@
     window.addEventListener('offline', updateConnectionStatus);
     updateConnectionStatus();
 
-    // طلب إذن الإشعارات: لن نقوم بطلبه تلقائياً، بل ننتظر تفاعل المستخدم
-    // يمكن إضافة زر في مكان ما لاستدعاء هذه الوظيفة
     function requestNotificationPermission() {
       if (!('Notification' in window)) return;
       if (Notification.permission === 'granted') return;
       if (Notification.permission === 'denied') return;
-      // لا نطلب الإذن تلقائياً، فقط عند طلب المستخدم
       Notification.requestPermission().then(permission => {
         if (permission === 'granted') {
           showToast('تم تفعيل الإشعارات', 'success');
@@ -490,9 +495,6 @@
       });
 
       LocalStore.updateCartBadges();
-      // لا نطلب إذن الإشعارات تلقائياً
-      // requestNotificationPermission();
-
       LocalStore.updateThemeButton();
       const themeBtn = document.getElementById('sidebarThemeToggle');
       if (themeBtn) {
@@ -501,20 +503,26 @@
           LocalStore.updateThemeButton();
         });
       }
+      const topThemeBtn = document.getElementById('topbarThemeToggle');
+      if (topThemeBtn) {
+        topThemeBtn.addEventListener('click', function() {
+          LocalStore.toggleTheme();
+          LocalStore.updateThemeButton();
+        });
+      }
     });
 
-    // ====== منطق التحديث الدوري للإشعارات ======
     let lastUnreadCount = {{ unread_notifications if unread_notifications is not none else 0 }};
     let updateInterval = null;
 
     function fetchUpdates() {
-      if (!navigator.onLine) return; // لا تحاول إذا كان غير متصل
+      if (!navigator.onLine) return;
       fetch('/api/updates', {headers: {'Accept': 'application/json'}})
       .then(res => res.json())
       .then(data => {
         const unreadCount = data.unread_notifications || 0;
         const unreadBadge = document.querySelector('.badge.bg-warning');
-        const dot = document.querySelector('.notification-dot');
+        const dot = document.getElementById('navNotificationDot');
         if (unreadCount > 0) {
           if (unreadBadge) {
             unreadBadge.textContent = unreadCount;
@@ -547,7 +555,7 @@
     function startUpdateInterval() {
       if (updateInterval) clearInterval(updateInterval);
       if (navigator.onLine) {
-        fetchUpdates(); // مرة فورية
+        fetchUpdates();
         updateInterval = setInterval(fetchUpdates, 15000);
       }
     }
@@ -564,17 +572,13 @@
 
     startUpdateInterval();
 
-    // ====== تسجيل Service Worker ======
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       window.addEventListener('load', async () => {
         try {
           const registration = await navigator.serviceWorker.register('/sw.js');
           console.log('Service Worker registered');
-          // لا نطلب إذن الإشعارات هنا، بل ننتظر تفاعل المستخدم
-          // لكن يمكننا التحقق من الاشتراك الحالي
           const existingSubscription = await registration.pushManager.getSubscription();
           if (existingSubscription) {
-            // الاشتراك موجود، لا داعي لطلب إذن جديد
             console.log('Push subscription already exists');
           }
         } catch (err) {
@@ -594,7 +598,6 @@
       return outputArray;
     }
 
-    // وظيفة لتفعيل الإشعارات (يمكن استدعاؤها من زر)
     window.enablePushNotifications = async function() {
       try {
         const registration = await navigator.serviceWorker.ready;
