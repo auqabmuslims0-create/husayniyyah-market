@@ -25,7 +25,7 @@ def admin_stores():
                 models.Store.owner.has(models.User.email.ilike(f'%{q}%'))
             )
         )
-    if status_filter in ['active', 'pending', 'suspended', 'cancelled']:
+    if status_filter in ['active', 'pending', 'suspended', 'cancelled', 'expired']:
         query = query.filter_by(subscription_status=status_filter)
 
     pagination = query.order_by(models.Store.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
@@ -61,6 +61,19 @@ def admin_stores():
 @admin_bp.route('/admin/stores/<int:store_id>/toggle', methods=['POST'])
 @role_required('admin')
 def admin_toggle_store(store_id):
-    success, msg, _ = StoreService.toggle_store_status(store_id)
+    action = request.form.get('action', '').strip()
+    if action == 'activate':
+        # تفعيل إداري: يسمح بالتفعيل حتى بدون اشتراك ساري
+        success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=True)
+    elif action == 'suspend':
+        # تعليق المتجر
+        success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=False)
+    else:
+        # إذا لم يتم إرسال action، نحاول تحديده من حالة المتجر (احتياط)
+        store = models.Store.query.get_or_404(store_id)
+        if store.subscription_status == 'active':
+            success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=False)
+        else:
+            success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=True)
     flash(msg, 'success' if success else 'error')
     return redirect(url_for('admin.admin_stores'))

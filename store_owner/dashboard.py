@@ -3,7 +3,7 @@ from database import db
 import models
 from sqlalchemy import func
 from time_utils import current_time
-from utils import is_store_active, save_image
+from utils import is_store_active, save_image, get_setting
 from shared.validators import is_valid_phone_syrian
 from decorators import role_required
 from . import store_bp
@@ -112,7 +112,14 @@ def store_manage(store_id):
         return result[1]
     user, store = result
 
-    if not is_store_active(store):
+    # إذا كان المتجر معلقًا، عرض صفحة التعليق مع رقم التواصل
+    if store.subscription_status == 'suspended':
+        wallet_number = get_setting('wallet_number', '0995680223')
+        contact_phone = '+963' + wallet_number[1:] if wallet_number.startswith('0') else wallet_number
+        return render_template('store_owner/store_suspended.html', store=store, contact_phone=contact_phone)
+
+    # إذا كان المتجر غير نشط (ليس معلقًا)، توجيه لصفحة الاشتراك
+    if store.subscription_status != 'active':
         flash('هذا المتجر غير نشط، يجب دفع الاشتراك')
         return redirect(url_for('store.store_subscription', store_id=store.id))
 
