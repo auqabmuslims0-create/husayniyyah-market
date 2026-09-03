@@ -2,6 +2,7 @@ import sys
 import os
 import secrets
 import time
+from urllib.parse import urlparse, urlunparse
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'shared'))
@@ -16,10 +17,8 @@ from flask_migrate import Migrate
 import models
 from werkzeug.security import generate_password_hash
 
-# تحميل ملف .env
 load_dotenv()
 
-# استيراد Blueprints
 from auth import auth_bp
 from admin import admin_bp
 from blueprints.api import api_bp
@@ -35,15 +34,11 @@ from customer.services import services_bp
 from customer.account import account_bp
 from customer.cart import cart_bp
 
-# استيراد نظام الإشعارات الجديد
 from notifications import notifications_bp
 
 app = Flask(__name__)
-
-# دعم البروكسي العكسي
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-# إعدادات
 app.config['RATELIMIT_STORAGE_URI'] = 'memory://'
 limiter = Limiter(
     app=app,
@@ -106,12 +101,31 @@ def get_jwt_secret_key():
 
 app.config['JWT_SECRET_KEY'] = get_jwt_secret_key()
 
-# إعداد قاعدة البيانات مع دعم PostgreSQL
+# ====== معالجة DATABASE_URL بشكل آمن ======
 database_url = os.environ.get('DATABASE_URL')
-if database_url and database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'husayniyyah.db')
+if database_url:
+    database_url = database_url.strip()
+    # استبدال postgres:// بـ postgresql:// لتفادي مشاكل SQLAlchemy
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    # إذا كان الرابط لا يحتوي على منفذ واضح، نضيف المنفذ الافتراضي 5432
+    parsed = urlparse(database_url)
+    if parsed.scheme in ('postgresql', 'postgres') and parsed.port is None:
+        # إعادة بناء الرابط مع المنفذ الافتراضي 5432
+        host = parsed.hostname or ''
+        netloc = f"{host}:5432"
+        if parsed.username:
+            userinfo = f"{parsed.username}"
+            if parsed.password:
+                userinfo += f":{parsed.password}"
+            netloc = f"{userinfo}@{netloc}"
+        database_url = urlunparse((parsed.scheme, netloc, parsed.path, parsed.params, parsed.query, parsed.fragment))
+else:
+    # في حال عدم وجود DATABASE_URL نستخدم SQLite محليًا
+    database_url = 'sqlite:///' + os.path.join(os.path.dirname(__file__), 'husayniyyah.db')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024  # 15MB
@@ -136,9 +150,8 @@ app.register_blueprint(offers_bp)
 app.register_blueprint(services_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(cart_bp)
-app.register_blueprint(notifications_bp)  # تسجيل نظام الإشعارات
+app.register_blueprint(notifications_bp)
 
-# إنشاء المدير الافتراضي كأمر Flask مخصص
 @app.cli.command("create-admin")
 def create_admin_command():
     """إنشاء المدير الافتراضي إذا لم يكن موجوداً."""
@@ -205,11 +218,9 @@ def before_request_checks():
             flash('يجب تسجيل الدخول أولاً')
             return redirect(url_for('auth.login'))
 
-# ===== تخزين مؤقت بسيط لعدادات الإشعارات والعروض =====
 _notifications_cache = {}
 _offers_cache = {}
-
-CACHE_TIMEOUT = 30  # ثانية
+CACHE_TIMEOUT = 30
 
 @app.context_processor
 def inject_notifications_count():
@@ -224,7 +235,6 @@ def inject_notifications_count():
     if cached and (current_time - cached['timestamp'] < CACHE_TIMEOUT):
         return dict(unread_notifications=cached['count'])
 
-    # استخدام NotificationService بدلاً من الاستعلام المباشر
     from shared.services.notification_service import NotificationService
     unread_count = NotificationService.get_unread_count(user_id)
     _notifications_cache[user_id] = {'count': unread_count, 'timestamp': current_time}
@@ -266,7 +276,7 @@ def inject_show_bottom_nav():
             'stores.stores_page',
             'stores.store_public',
             'stores.product_public',
-            'notifications.notifications',   # إضافة مسار الإشعارات
+            'notifications.notifications',
             'account.favorites'
         ]
         if endpoint in allowed_customer_endpoints:
@@ -320,10 +330,8 @@ def assetlinks():
     return app.send_static_file('.well-known/assetlinks.json')
 
 if __name__ == '__main__':
-    # إنشاء الجداول تلقائيًا في بيئة التطوير قبل أي استعلام
     with app.app_context():
         db.create_all()
-    # إنشاء المدير عند تشغيل السيرفر مباشرة (اختياري)
     ensure_admin()
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(host='0.0.0.0', port=5000, debug=debug_mode)
