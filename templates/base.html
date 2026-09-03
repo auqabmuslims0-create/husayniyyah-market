@@ -136,7 +136,6 @@
       width: auto;
     }
 
-    /* توست عام */
     .toast-modern .toast-body {
       display: flex;
       align-items: center;
@@ -161,10 +160,21 @@
     body.dark-mode .toast-modern .toast-body .toast-image {
       border-color: rgba(255,255,255,0.2);
     }
-    /* أيقونات رسائل الفلاش */
     .toast-icon {
       font-size: 1.2rem;
       flex-shrink: 0;
+    }
+    /* نقطة التنبيه فوق زر البرغر */
+    .notification-dot {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 10px;
+      height: 10px;
+      background-color: #dc3545;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      display: none;
     }
   </style>
   {% block head %}{% endblock %}
@@ -195,7 +205,7 @@
     <div class="container-fluid d-flex justify-content-center align-items-center position-relative">
       <button class="burger-btn position-absolute start-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu">
         <i class="bi bi-list"></i>
-        {% if unread_notifications > 0 %}<span class="notification-dot"></span>{% endif %}
+        <span class="notification-dot"></span>
       </button>
       <a class="navbar-brand mx-auto" href="{{ url_for('market.market') if current_user else url_for('auth.login') }}">
         <i class="bi bi-shop-fill me-2" style="font-size:1.5rem;"></i><span class="fw-bold">سوق الحسينية</span>
@@ -481,23 +491,34 @@
       }
     });
 
+    // ====== منطق التحديث الدوري للإشعارات ======
+    let lastUnreadCount = {{ unread_notifications if unread_notifications is not none else 0 }};
+
     function fetchUpdates() {
       fetch('/api/updates', {headers: {'Accept': 'application/json'}})
       .then(res => res.json())
       .then(data => {
+        const unreadCount = data.unread_notifications || 0;
         const unreadBadge = document.querySelector('.badge.bg-warning');
-        if (data.unread_notifications > 0) {
+        const dot = document.querySelector('.notification-dot');
+        if (unreadCount > 0) {
           if (unreadBadge) {
-            unreadBadge.textContent = data.unread_notifications;
+            unreadBadge.textContent = unreadCount;
             unreadBadge.style.display = 'inline';
           }
-          const dot = document.querySelector('.notification-dot');
           if (dot) dot.style.display = 'block';
         } else {
           if (unreadBadge) unreadBadge.style.display = 'none';
-          const dot = document.querySelector('.notification-dot');
           if (dot) dot.style.display = 'none';
         }
+
+        // إظهار توست عند وصول إشعار جديد
+        if (unreadCount > lastUnreadCount) {
+          showToast('لديك إشعار جديد', 'info');
+        }
+        lastUnreadCount = unreadCount;
+
+        // تنبيهات الأدوار
         if (data.new_orders_count > 0) {
           showToast('لديك ' + data.new_orders_count + ' طلب جديد بانتظار التأكيد', 'info');
         }
