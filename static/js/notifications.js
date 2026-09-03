@@ -34,8 +34,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // اقتراع دوري لعداد غير المقروء (كل 30 ثانية)
+    // اقتراع دوري لعداد غير المقروء (كل 30 ثانية) فقط عند الاتصال
     function pollUnreadCount() {
+        if (!navigator.onLine) return; // لا تحاول عند عدم الاتصال
         fetch('/api/notifications/unread-count', {
             headers: { 'Accept': 'application/json' }
         })
@@ -55,5 +56,26 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(err => console.warn('Poll failed:', err));
     }
 
-    setInterval(pollUnreadCount, 30000);
+    // تشغيل الاقتراع فقط عند الاتصال، وإيقافه عند عدم الاتصال
+    let pollInterval = null;
+
+    function startPolling() {
+        if (pollInterval) clearInterval(pollInterval);
+        if (navigator.onLine) {
+            pollUnreadCount();
+            pollInterval = setInterval(pollUnreadCount, 30000);
+        }
+    }
+
+    function stopPolling() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
+
+    window.addEventListener('online', startPolling);
+    window.addEventListener('offline', stopPolling);
+
+    startPolling();
 });

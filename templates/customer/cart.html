@@ -59,6 +59,9 @@
         color: var(--primary);
         margin-bottom: 8px;
     }
+    body.dark-mode .cart-item-price {
+        color: var(--accent);
+    }
     .cart-item-actions {
         display: flex;
         gap: 5px;
@@ -294,6 +297,21 @@
         padding: 5px 15px;
         font-size: 0.8rem;
     }
+    /* تحسينات لوضع عدم الاتصال */
+    #offlineCartContainer {
+        display: none;
+    }
+    .offline-cart-item {
+        border: 1px solid #e0e0e0;
+        border-radius: 15px;
+        overflow: hidden;
+        background: #fff;
+        margin-bottom: 10px;
+    }
+    body.dark-mode .offline-cart-item {
+        background: #1e1e1e;
+        border-color: #333;
+    }
 </style>
 {% endblock %}
 
@@ -301,61 +319,70 @@
 <div class="container">
     <h4 class="fw-bold mb-4"><i class="bi bi-cart3"></i> سلة المشتريات</h4>
 
-    <div id="localCartContainer" style="display:none;"></div>
-
-    {% if grouped %}
-        {% for store_id, group in grouped.items() %}
-        <div class="card mb-4 shadow-sm server-cart">
-            <div class="store-card-header d-flex justify-content-between align-items-center">
-                <div>
-                    {% if group.store and group.store.logo_url %}
-                        <img src="{{ group.store.logo_url | get_image_url }}" class="rounded-circle me-2" style="width:35px;height:35px;object-fit:cover;" alt="{{ group.store.name }}">
-                    {% else %}
-                        <i class="bi bi-shop me-2"></i>
-                    {% endif %}
-                    <span class="fw-bold">{{ group.store.name if group.store else 'متجر محذوف' }}</span>
+    <!-- المحتوى العادي (عند الاتصال) -->
+    <div id="onlineCartContent">
+        {% if grouped %}
+            {% for store_id, group in grouped.items() %}
+            <div class="card mb-4 shadow-sm server-cart">
+                <div class="store-card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if group.store and group.store.logo_url %}
+                            <img src="{{ group.store.logo_url | get_image_url }}" class="rounded-circle me-2" style="width:35px;height:35px;object-fit:cover;" alt="{{ group.store.name }}">
+                        {% else %}
+                            <i class="bi bi-shop me-2"></i>
+                        {% endif %}
+                        <span class="fw-bold">{{ group.store.name if group.store else 'متجر محذوف' }}</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="clearLocalStoreCart({{ store_id }}, {{ group.cart_items|map(attribute='product.id')|list|tojson }})">مسح الكل</button>
+                        <a href="{{ url_for('cart.checkout', store_id=store_id) }}" class="btn btn-sm btn-custom">إتمام الطلب</a>
+                    </div>
                 </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-danger"
-                            onclick="clearLocalStoreCart({{ store_id }}, {{ group.cart_items|map(attribute='product.id')|list|tojson }})">مسح الكل</button>
-                    <a href="{{ url_for('cart.checkout', store_id=store_id) }}" class="btn btn-sm btn-custom">إتمام الطلب</a>
-                </div>
-            </div>
-            <div class="card-body p-0">
-                <div class="row g-2 p-2">
-                    {% for item in group.cart_items %}
-                    <div class="col-6 col-md-4 col-lg-3">
-                        <div class="cart-item-card">
-                            <a href="{{ url_for('stores.product_public', product_id=item.product.id) }}">
-                                {% if item.product.images %}
-                                    {% set main_img = item.product.images.split(',')[0].strip() %}
-                                    <img src="{{ main_img | get_image_url }}" class="cart-item-image" alt="{{ item.product.name }}">
-                                {% else %}
-                                    <div class="cart-item-image-placeholder"><i class="bi bi-image"></i></div>
-                                {% endif %}
-                            </a>
-                            <div class="cart-item-body">
-                                <div class="cart-item-name">{{ item.product.name }}</div>
-                                <div class="cart-item-price">{{ item.product.price|format_price }} ل.س</div>
-                                <div class="cart-item-actions">
-                                    {% if group.store.has_delivery %}
-                                        <a href="{{ url_for('cart.buy_product', product_id=item.product.id) }}" class="btn-buy-now">شراء الآن</a>
+                <div class="card-body p-0">
+                    <div class="row g-2 p-2">
+                        {% for item in group.cart_items %}
+                        <div class="col-6 col-md-4 col-lg-3">
+                            <div class="cart-item-card">
+                                <a href="{{ url_for('stores.product_public', product_id=item.product.id) }}">
+                                    {% if item.product.images %}
+                                        {% set main_img = item.product.images.split(',')[0].strip() %}
+                                        <img src="{{ main_img | get_image_url }}" class="cart-item-image" alt="{{ item.product.name }}">
                                     {% else %}
-                                        <div class="pickup-only-note"><i class="bi bi-shop"></i> حصرا من المتجر</div>
+                                        <div class="cart-item-image-placeholder"><i class="bi bi-image"></i></div>
                                     {% endif %}
-                                    <button class="btn btn-outline-danger btn-remove btn-sm" data-product-id="{{ item.product.id }}" title="إزالة"><i class="bi bi-trash"></i></button>
+                                </a>
+                                <div class="cart-item-body">
+                                    <div class="cart-item-name">{{ item.product.name }}</div>
+                                    <div class="cart-item-price">{{ item.product.price|format_price }} ل.س</div>
+                                    <div class="cart-item-actions">
+                                        {% if group.store.has_delivery %}
+                                            <a href="{{ url_for('cart.buy_product', product_id=item.product.id) }}" class="btn-buy-now">شراء الآن</a>
+                                        {% else %}
+                                            <div class="pickup-only-note"><i class="bi bi-shop"></i> حصرا من المتجر</div>
+                                        {% endif %}
+                                        <button class="btn btn-outline-danger btn-remove btn-sm" data-product-id="{{ item.product.id }}" title="إزالة"><i class="bi bi-trash"></i></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
             </div>
+            {% endfor %}
+        {% else %}
+            {{ macros.render_empty_state('bi-cart', 'سلتك فارغة', url_for('market.market'), 'تسوق الآن') }}
+        {% endif %}
+    </div>
+
+    <!-- محتوى عدم الاتصال -->
+    <div id="offlineCartContainer">
+        <div class="alert alert-warning text-center">
+            <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض السلة المحفوظة محلياً
         </div>
-        {% endfor %}
-    {% else %}
-        {{ macros.render_empty_state('bi-cart', 'سلتك فارغة', url_for('market.market'), 'تسوق الآن') }}
-    {% endif %}
+        <div id="offlineCartItems"></div>
+    </div>
 
     <!-- الطلبات الحديثة -->
     {% if orders %}
@@ -460,11 +487,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    window.clearLocalCart = function() {
-        LocalStore.setCart({});
-        LocalStore.updateCartBadges();
-        location.reload();
-    };
+    // إعداد زر الحذف في وضع الاتصال
+    document.querySelectorAll('.btn-remove').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+            if (confirm('هل تريد إزالة هذا المنتج من السلة؟')) {
+                LocalStore.removeFromCart(parseInt(productId));
+                LocalStore.updateCartBadges();
+                // إعادة تحميل الصفحة لتحديث عرض الخادم
+                location.reload();
+            }
+        });
+    });
+
+    // دالة مسح سلة متجر معين (من الزر "مسح الكل")
     window.clearLocalStoreCart = function(storeId, productIds) {
         const cart = LocalStore.getCart();
         productIds.forEach(pid => { delete cart[String(pid)]; });
@@ -473,25 +509,33 @@ document.addEventListener('DOMContentLoaded', function() {
         location.reload();
     };
 
-    document.querySelectorAll('.btn-remove').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const productId = this.dataset.productId;
-            if (confirm('هل تريد إزالة هذا المنتج من السلة؟')) {
-                LocalStore.removeFromCart(parseInt(productId));
-                LocalStore.updateCartBadges();
-                location.reload();
-            }
-        });
-    });
+    // ==== التعامل مع وضع عدم الاتصال ====
+    const onlineCartContent = document.getElementById('onlineCartContent');
+    const offlineCartContainer = document.getElementById('offlineCartContainer');
+    const offlineCartItems = document.getElementById('offlineCartItems');
 
-    if (!navigator.onLine) {
-        document.querySelectorAll('.server-cart').forEach(el => el.style.display = 'none');
-        const localCartContainer = document.getElementById('localCartContainer');
-        localCartContainer.style.display = 'block';
+    function showOfflineCart() {
+        if (onlineCartContent) onlineCartContent.style.display = 'none';
+        if (offlineCartContainer) offlineCartContainer.style.display = 'block';
+        renderOfflineCart();
+    }
+
+    function showOnlineCart() {
+        if (onlineCartContent) onlineCartContent.style.display = 'block';
+        if (offlineCartContainer) offlineCartContainer.style.display = 'none';
+    }
+
+    function renderOfflineCart() {
+        if (!offlineCartItems) return;
         const cart = LocalStore.getCart();
         const cache = LocalStore.getProductsCache();
-        let html = '<div class="row g-3">';
-        for (const pid in cart) {
+        const productIds = Object.keys(cart);
+        if (productIds.length === 0) {
+            offlineCartItems.innerHTML = '<p class="text-muted text-center">سلتك فارغة</p>';
+            return;
+        }
+        let html = '<div class="row g-2">';
+        productIds.forEach(pid => {
             const qty = cart[pid];
             const p = cache[pid] || {};
             html += `
@@ -503,16 +547,34 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="cart-item-price">${p.price || 0} ل.س</div>
                             <div class="cart-item-actions">
                                 <div class="pickup-only-note"><i class="bi bi-shop"></i> استلام حصرا من المتجر</div>
-                                <button class="btn btn-sm btn-outline-danger" onclick="LocalStore.removeFromCart(${pid}); location.reload();"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeOfflineCartItem('${pid}')"><i class="bi bi-trash"></i></button>
                             </div>
                         </div>
                     </div>
                 </div>`;
-        }
+        });
         html += '</div>';
-        if (Object.keys(cart).length === 0) html = '<p class="text-muted">سلتك فارغة</p>';
-        localCartContainer.innerHTML = html;
+        offlineCartItems.innerHTML = html;
     }
+
+    window.removeOfflineCartItem = function(pid) {
+        LocalStore.removeFromCart(parseInt(pid));
+        LocalStore.updateCartBadges();
+        renderOfflineCart(); // إعادة رسم السلة دون إعادة تحميل الصفحة
+    };
+
+    if (!navigator.onLine) {
+        showOfflineCart();
+    }
+
+    window.addEventListener('online', function() {
+        showOnlineCart();
+        window.location.reload();
+    });
+
+    window.addEventListener('offline', function() {
+        showOfflineCart();
+    });
 });
 </script>
 {% endblock %}

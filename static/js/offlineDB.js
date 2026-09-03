@@ -1,11 +1,11 @@
 /**
  * offlineDB.js
  * إدارة قاعدة بيانات IndexedDB لتخزين البيانات محليًا
- * الجداول: products, stores, pendingOrders
+ * الجداول: products, stores, pendingOrders, notifications
  */
 const OfflineDB = (function() {
     const DB_NAME = 'husayniyyah_offline_db';
-    const DB_VERSION = 2; // تمت زيادة الإصدار لدعم الفهارس الجديدة
+    const DB_VERSION = 3; // تمت زيادة الإصدار لدعم مخزن الإشعارات
 
     let db = null;
 
@@ -25,8 +25,6 @@ const OfflineDB = (function() {
                     const productsStore = database.createObjectStore('products', { keyPath: 'id' });
                     productsStore.createIndex('store_id', 'store_id', { unique: false });
                     productsStore.createIndex('name', 'name', { unique: false });
-                } else {
-                    // تحديث الفهارس إذا لزم (لن يتم في هذا المثال)
                 }
 
                 // إنشاء أو تحديث مخزن المتاجر
@@ -39,6 +37,13 @@ const OfflineDB = (function() {
                 if (!database.objectStoreNames.contains('pendingOrders')) {
                     const ordersStore = database.createObjectStore('pendingOrders', { keyPath: 'local_id', autoIncrement: true });
                     ordersStore.createIndex('created_at', 'created_at', { unique: false });
+                }
+
+                // إنشاء مخزن الإشعارات (جديد)
+                if (!database.objectStoreNames.contains('notifications')) {
+                    const notificationsStore = database.createObjectStore('notifications', { keyPath: 'id' });
+                    notificationsStore.createIndex('is_read', 'is_read', { unique: false });
+                    notificationsStore.createIndex('created_at', 'created_at', { unique: false });
                 }
             };
 
@@ -203,6 +208,43 @@ const OfflineDB = (function() {
         return deleteItem('pendingOrders', localId);
     }
 
+    // دوال الإشعارات
+    async function saveNotification(notification) {
+        return addItem('notifications', notification);
+    }
+
+    async function saveNotifications(notifications) {
+        const store = await getStore('notifications', 'readwrite');
+        const transaction = store.transaction;
+        return new Promise((resolve, reject) => {
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+            notifications.forEach(n => {
+                store.put({
+                    id: n.id,
+                    type: n.type || 'default',
+                    title: n.title || '',
+                    message: n.message || '',
+                    link: n.link || '',
+                    is_read: n.is_read || false,
+                    created_at: n.created_at || new Date().toISOString()
+                });
+            });
+        });
+    }
+
+    async function getAllNotifications() {
+        return getAll('notifications');
+    }
+
+    async function deleteNotification(notificationId) {
+        return deleteItem('notifications', notificationId);
+    }
+
+    async function clearNotifications() {
+        return clearStore('notifications');
+    }
+
     return {
         saveProduct,
         saveProducts,
@@ -214,6 +256,11 @@ const OfflineDB = (function() {
         savePendingOrder,
         getAllPendingOrders,
         deletePendingOrder,
+        saveNotification,
+        saveNotifications,
+        getAllNotifications,
+        deleteNotification,
+        clearNotifications,
         clearStore
     };
 })();
