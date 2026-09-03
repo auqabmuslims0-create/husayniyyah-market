@@ -36,6 +36,7 @@ def upgrade():
     sa.Column('phone', sa.String(length=20), nullable=True),
     sa.Column('avatar', sa.String(length=300), nullable=True),
     sa.Column('bio', sa.Text(), nullable=True),
+    sa.Column('dark_mode', sa.Boolean(), nullable=True),
     sa.Column('role', sa.String(length=20), nullable=False),
     sa.Column('is_active', sa.Boolean(), nullable=True),
     sa.Column('shift_start_time', sa.Time(), nullable=True),
@@ -95,6 +96,8 @@ def upgrade():
     sa.Column('icon', sa.String(length=50), nullable=True),
     sa.Column('is_global', sa.Boolean(), nullable=True),
     sa.Column('extra_data', sa.Text(), nullable=True),
+    sa.Column('read_at', sa.DateTime(), nullable=True),
+    sa.Column('expires_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
