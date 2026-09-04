@@ -5,7 +5,6 @@
 
 {% block head %}
 <style>
-    /* ترويسة المتاجر */
     .stores-hero {
         display: flex;
         align-items: center;
@@ -39,7 +38,6 @@
         padding: 0.5rem 1rem;
         border-radius: 25px;
     }
-    /* شريط الفلترة */
     .filter-bar {
         background: #f8f9fa;
         border-radius: 15px;
@@ -49,7 +47,6 @@
     body.dark-mode .filter-bar {
         background: #252525;
     }
-    /* شبكة المتاجر */
     .stores-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -61,14 +58,12 @@
             gap: 10px;
         }
     }
-    /* ضمان ظهور الشعارات بشكل جيد */
     .store-card-image img {
         width: 100%;
         height: 100%;
         object-fit: cover;
         display: block;
     }
-    /* شارة الحالة */
     .store-status-badge {
         font-size: 0.7rem;
         padding: 0.3rem 0.6rem;
@@ -76,7 +71,6 @@
         font-weight: 600;
         display: inline-block;
     }
-    /* بطاقة المتجر */
     .store-card {
         display: flex;
         flex-direction: column;
@@ -146,8 +140,6 @@
         background: var(--accent);
         color: #000;
     }
-
-    /* تنسيق قسم عدم الاتصال */
     #offlineContent {
         display: none;
     }
@@ -193,9 +185,7 @@
 
 {% block content %}
 <div class="container">
-    <!-- المحتوى العادي (عند الاتصال) -->
     <div id="onlineContent">
-        <!-- ترويسة الصفحة -->
         <div class="stores-hero">
             <div class="d-flex align-items-center gap-3">
                 <div class="stores-hero-icon">
@@ -209,12 +199,11 @@
             <span class="badge bg-primary stores-count">{{ pagination.total }} متجر</span>
         </div>
 
-        <!-- شريط الفلترة -->
         <div class="filter-bar">
             <form method="GET" action="{{ url_for('stores.stores_page') }}" class="row g-2 align-items-end">
                 <div class="col-12 col-md-6">
                     <label class="form-label small fw-bold">بحث</label>
-                    <div class="input-group search-input-group">
+                    <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                         <input type="text" name="q" value="{{ q or '' }}" class="form-control" placeholder="ابحث عن متجر بالاسم أو المالك...">
                     </div>
@@ -233,7 +222,6 @@
             </form>
         </div>
 
-        <!-- شبكة المتاجر -->
         {% if stores %}
         <div class="stores-grid">
             {% for store in stores %}
@@ -244,7 +232,6 @@
             {{ macros.render_empty_state('bi-shop-window', 'لا توجد متاجر مطابقة', url_for('stores.stores_page'), 'عرض الكل') }}
         {% endif %}
 
-        <!-- ترقيم الصفحات -->
         {% if pagination.pages > 1 %}
         <nav class="mt-4">
             <ul class="pagination justify-content-center">
@@ -252,12 +239,12 @@
                     <a class="page-link" href="{{ url_for('stores.stores_page', page=pagination.prev_num, q=q, status=status_filter) }}">السابق</a>
                 </li>
                 {% for p in pagination.iter_pages() %}
-                    {% if p != '...' %}
-                    <li class="page-item {% if p == pagination.page %}active{% endif %}">
-                        <a class="page-link" href="{{ url_for('stores.stores_page', page=p, q=q, status=status_filter) }}">{{ p }}</a>
-                    </li>
+                    {% if p %}
+                        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('stores.stores_page', page=p, q=q, status=status_filter) }}">{{ p }}</a>
+                        </li>
                     {% else %}
-                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
                     {% endif %}
                 {% endfor %}
                 <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
@@ -268,7 +255,6 @@
         {% endif %}
     </div>
 
-    <!-- محتوى عدم الاتصال -->
     <div id="offlineContent">
         <div class="alert alert-warning text-center mb-3">
             <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض نسخة محفوظة من المتاجر
@@ -281,7 +267,6 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // حفظ المتاجر في IndexedDB إذا كان متصلاً
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
         const storesData = [
             {% for store in stores %}
@@ -298,13 +283,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }{{ ',' if not loop.last }}
             {% endfor %}
         ];
-
         if (storesData.length) {
             OfflineDB.saveStores(storesData).catch(err => console.warn('OfflineDB saveStores failed:', err));
         }
     }
 
-    // ==== التعامل مع وضع عدم الاتصال ====
     const onlineContent = document.getElementById('onlineContent');
     const offlineContent = document.getElementById('offlineContent');
 
@@ -321,10 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadOfflineData() {
         try {
-            if (typeof OfflineDB === 'undefined') {
-                console.warn('OfflineDB غير متوفر');
-                return;
-            }
+            if (typeof OfflineDB === 'undefined') return;
             const stores = await OfflineDB.getAllStores();
             const grid = document.getElementById('offlineStoresGrid');
             if (grid) {

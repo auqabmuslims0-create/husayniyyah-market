@@ -59,15 +59,10 @@
     .btn-link-view { font-size: 0.8rem; text-decoration: none; color: var(--primary); }
     body.dark-mode .btn-link-view { color: var(--accent); }
 
-    /* قسم عدم الاتصال */
-    #offlineNotificationsContainer {
-        display: none;
-    }
+    #offlineNotificationsContainer { display: none; }
     .offline-notification-item {
-        background: #fff;
-        border-radius: 15px;
-        padding: 12px 15px;
-        margin-bottom: 10px;
+        background: #fff; border-radius: 15px;
+        padding: 12px 15px; margin-bottom: 10px;
         border: 1px solid #eaeaea;
     }
     body.dark-mode .offline-notification-item {
@@ -82,13 +77,13 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
         <h4 class="fw-bold mb-0"><i class="bi bi-bell"></i> الإشعارات</h4>
         <div class="d-flex gap-2 flex-wrap">
-            <form method="POST" action="{{ url_for('account.mark_all_notifications_read') }}" class="d-inline">
+            <form method="POST" action="{{ url_for('notifications.mark_all_notifications_read') }}" class="d-inline">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="btn btn-sm btn-outline-success">
                     <i class="bi bi-check2-all"></i> تحديد الكل كمقروء
                 </button>
             </form>
-            <form id="deleteReadForm" method="POST" action="{{ url_for('account.delete_all_read_notifications') }}" class="d-inline">
+            <form id="deleteReadForm" method="POST" action="{{ url_for('notifications.delete_all_read_notifications') }}" class="d-inline">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 <button type="button" class="btn btn-sm btn-outline-danger"
                         onclick="showConfirmModal('هل تريد حذف جميع الإشعارات المقروءة؟', function() { document.getElementById('deleteReadForm').submit(); })">
@@ -98,10 +93,9 @@
         </div>
     </div>
 
-    <!-- المحتوى العادي -->
     <div id="onlineNotificationsContent">
         {% if notifs %}
-        <form id="bulkDeleteForm" method="POST" action="{{ url_for('account.delete_selected_notifications') }}">
+        <form id="bulkDeleteForm" method="POST" action="{{ url_for('notifications.delete_selected_notifications') }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <button type="button" class="btn btn-sm btn-danger"
@@ -113,54 +107,54 @@
 
             <div class="notification-list">
                 {% for notif in notifs %}
-                <div class="notification-item {% if not notif.is_read %}unread{% else %}read{% endif %}">
-                    <div class="notification-check">
-                        <input type="checkbox" name="notification_ids" value="{{ notif.id }}" class="form-check-input" {% if not notif.is_read %}checked{% endif %}>
-                    </div>
-                    <div class="notification-icon
-                        {%- if notif.type == 'order' %} icon-order
-                        {%- elif notif.type == 'subscription' %} icon-subscription
-                        {%- elif notif.type == 'delivery' %} icon-delivery
-                        {%- elif notif.type == 'message' %} icon-message
-                        {%- elif notif.type == 'alert' %} icon-alert
-                        {%- else %} icon-default{% endif %}">
-                        {% if notif.type == 'order' %}<i class="bi bi-bag-check"></i>
-                        {% elif notif.type == 'subscription' %}<i class="bi bi-arrow-repeat"></i>
-                        {% elif notif.type == 'delivery' %}<i class="bi bi-truck"></i>
-                        {% elif notif.type == 'message' %}<i class="bi bi-chat-dots"></i>
-                        {% elif notif.type == 'alert' %}<i class="bi bi-exclamation-triangle"></i>
-                        {% else %}<i class="bi bi-bell"></i>{% endif %}
-                    </div>
-                    <div class="notification-content">
-                        {% if notif.title %}<div class="notification-title">{{ notif.title }}</div>{% endif %}
-                        <div class="notification-message">{{ notif.message }}</div>
-                        <div class="notification-meta">
-                            <span class="notification-time"><i class="bi bi-clock"></i> {{ notif.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                            {% if notif.link %}
-                            <a href="{{ notif.link }}" class="btn-link-view"><i class="bi bi-box-arrow-up-left"></i> عرض</a>
+                    <div class="notification-item {% if not notif.is_read %}unread{% else %}read{% endif %}">
+                        <div class="notification-check">
+                            <input type="checkbox" name="notification_ids" value="{{ notif.id }}" class="form-check-input" {% if not notif.is_read %}checked{% endif %}>
+                        </div>
+                        <div class="notification-icon
+                            {%- if notif.type == 'order' %} icon-order
+                            {%- elif notif.type == 'subscription' %} icon-subscription
+                            {%- elif notif.type == 'delivery' %} icon-delivery
+                            {%- elif notif.type == 'message' %} icon-message
+                            {%- elif notif.type == 'alert' %} icon-alert
+                            {%- else %} icon-default{% endif %}">
+                            {% if notif.type == 'order' %}<i class="bi bi-bag-check"></i>
+                            {% elif notif.type == 'subscription' %}<i class="bi bi-arrow-repeat"></i>
+                            {% elif notif.type == 'delivery' %}<i class="bi bi-truck"></i>
+                            {% elif notif.type == 'message' %}<i class="bi bi-chat-dots"></i>
+                            {% elif notif.type == 'alert' %}<i class="bi bi-exclamation-triangle"></i>
+                            {% else %}<i class="bi bi-bell"></i>{% endif %}
+                        </div>
+                        <div class="notification-content">
+                            {% if notif.title %}<div class="notification-title">{{ notif.title }}</div>{% endif %}
+                            <div class="notification-message">{{ notif.message }}</div>
+                            <div class="notification-meta">
+                                <span class="notification-time"><i class="bi bi-clock"></i> {{ notif.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                {% if notif.link %}
+                                    <a href="{{ notif.link }}" class="btn-link-view"><i class="bi bi-box-arrow-up-left"></i> عرض</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="notification-actions">
+                            {% if not notif.is_read %}
+                            <form method="POST" action="{{ url_for('notifications.mark_notification_read', notif_id=notif.id) }}" class="d-inline">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-action btn-mark-read" title="تعليم كمقروء">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                            </form>
                             {% endif %}
+                            <button type="button" class="btn btn-action btn-delete"
+                                    onclick="showConfirmModal('هل تريد حذف هذا الإشعار؟', function() { document.getElementById('deleteNotificationForm{{ notif.id }}').submit(); })"
+                                    title="حذف">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <form id="deleteNotificationForm{{ notif.id }}" method="POST"
+                                  action="{{ url_for('notifications.delete_notification', notif_id=notif.id) }}" class="d-none">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            </form>
                         </div>
                     </div>
-                    <div class="notification-actions">
-                        {% if not notif.is_read %}
-                        <form method="POST" action="{{ url_for('account.mark_notification_read', notif_id=notif.id) }}" class="d-inline">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="btn btn-action btn-mark-read" title="تعليم كمقروء">
-                                <i class="bi bi-check"></i>
-                            </button>
-                        </form>
-                        {% endif %}
-                        <button type="button" class="btn btn-action btn-delete"
-                                onclick="showConfirmModal('هل تريد حذف هذا الإشعار؟', function() { document.getElementById('deleteNotificationForm{{ notif.id }}').submit(); })"
-                                title="حذف">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                        <form id="deleteNotificationForm{{ notif.id }}" method="POST"
-                              action="{{ url_for('account.delete_notification', notif_id=notif.id) }}" class="d-none">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                        </form>
-                    </div>
-                </div>
                 {% endfor %}
             </div>
         </form>
@@ -169,7 +163,6 @@
         {% endif %}
     </div>
 
-    <!-- محتوى عدم الاتصال -->
     <div id="offlineNotificationsContainer">
         <div class="alert alert-warning text-center">
             <i class="bi bi-wifi-off"></i> أنت غير متصل - يتم عرض الإشعارات المحفوظة
@@ -182,7 +175,6 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // حفظ الإشعارات في IndexedDB عند الاتصال
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
         const notificationsData = [
             {% for notif in notifs %}
@@ -202,7 +194,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ==== التعامل مع عدم الاتصال ====
     const onlineContent = document.getElementById('onlineNotificationsContent');
     const offlineContainer = document.getElementById('offlineNotificationsContainer');
     const offlineList = document.getElementById('offlineNotificationsList');

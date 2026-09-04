@@ -1,6 +1,6 @@
 from flask import request, jsonify, session
 from database import db
-import models
+from models import Favorite, User, Product, Store
 from . import api_bp
 from .helpers import token_required
 
@@ -13,12 +13,10 @@ def sync_cart(current_user):
     if cart is None:
         return jsonify({'message': 'يجب إرسال بيانات السلة'}), 400
 
-    # السلة تُخزَّن في الجلسة كقاموس {product_id: quantity}
     if not isinstance(cart, dict):
         return jsonify({'message': 'صيغة السلة غير صالحة'}), 400
 
     try:
-        # تحويل المفاتيح إلى أعداد صحيحة وتنظيف القيم
         cleaned_cart = {}
         for key, qty in cart.items():
             try:
@@ -39,7 +37,6 @@ def sync_cart(current_user):
         db.session.rollback()
         return jsonify({'message': 'حدث خطأ أثناء مزامنة السلة'}), 500
 
-
 @api_bp.route('/favorites/sync', methods=['POST'])
 @token_required
 def sync_favorites(current_user):
@@ -53,43 +50,36 @@ def sync_favorites(current_user):
         return jsonify({'message': 'صيغة المفضلة غير صالحة'}), 400
 
     try:
-        # جلب المفضلة الحالية من قاعدة البيانات
-        existing_favs = models.Favorite.query.filter_by(user_id=current_user.id).all()
+        existing_favs = Favorite.query.filter_by(user_id=current_user.id).all()
         existing_products = set(fav.product_id for fav in existing_favs if fav.product_id)
         existing_stores = set(fav.store_id for fav in existing_favs if fav.store_id)
 
-        # المفضلة القادمة من العميل
         new_products = set(int(pid) for pid in favorites_data.get('products', []) if str(pid).isdigit())
         new_stores = set(int(sid) for sid in favorites_data.get('stores', []) if str(sid).isdigit())
 
-        # حذف المفضلة التي أُزيلت
         for fav in existing_favs:
             if fav.product_id and fav.product_id not in new_products:
                 db.session.delete(fav)
             elif fav.store_id and fav.store_id not in new_stores:
                 db.session.delete(fav)
 
-        # إضافة المفضلة الجديدة
         for pid in new_products:
             if pid not in existing_products:
-                # التحقق من وجود المنتج
-                product = models.Product.query.get(pid)
+                product = Product.query.get(pid)
                 if product:
-                    db.session.add(models.Favorite(user_id=current_user.id, product_id=pid))
+                    db.session.add(Favorite(user_id=current_user.id, product_id=pid))
 
         for sid in new_stores:
             if sid not in existing_stores:
-                # التحقق من وجود المتجر
-                store = models.Store.query.get(sid)
+                store = Store.query.get(sid)
                 if store:
-                    db.session.add(models.Favorite(user_id=current_user.id, store_id=sid))
+                    db.session.add(Favorite(user_id=current_user.id, store_id=sid))
 
         db.session.commit()
         return jsonify({'message': 'تمت مزامنة المفضلة بنجاح'}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': f'حدث خطأ أثناء مزامنة المفضلة: {str(e)}'}), 500
-
 
 @api_bp.route('/profile/sync', methods=['POST'])
 @token_required
@@ -110,24 +100,22 @@ def sync_profile(current_user):
         return jsonify({'message': 'لا توجد حقول للتحديث'}), 400
 
     try:
-        # التحقق من عدم تكرار البريد أو اسم المستخدم (اختياري)
         if 'username' in updates:
-            existing = models.User.query.filter(
-                models.User.username == updates['username'],
-                models.User.id != current_user.id
+            existing = User.query.filter(
+                User.username == updates['username'],
+                User.id != current_user.id
             ).first()
             if existing:
                 return jsonify({'message': 'اسم المستخدم مستخدم بالفعل'}), 409
 
         if 'email' in updates:
-            existing = models.User.query.filter(
-                models.User.email == updates['email'],
-                models.User.id != current_user.id
+            existing = User.query.filter(
+                User.email == updates['email'],
+                User.id != current_user.id
             ).first()
             if existing:
                 return jsonify({'message': 'البريد الإلكتروني مستخدم بالفعل'}), 409
 
-        # تطبيق التحديثات
         for field, value in updates.items():
             setattr(current_user, field, value)
 

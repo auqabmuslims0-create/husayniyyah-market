@@ -1,10 +1,10 @@
 from flask import render_template, request, redirect, url_for, flash, abort
 from database import db
-import models
-from time_utils import current_time
-from utils import is_store_active, get_setting
-from decorators import role_required
-from services.subscription_service import SubscriptionService
+from models import Subscription
+from shared.time_utils import current_time
+from shared.utils import is_store_active, get_setting
+from shared.decorators import role_required
+from shared.services.subscription_service import SubscriptionService
 from . import store_bp
 from .common import check_store_access
 
@@ -20,21 +20,17 @@ def store_subscription(store_id):
     duration_days = int(get_setting('subscription_duration_days', 30))
     wallet_number = get_setting('wallet_number', '0995680223')
 
-    # جلب أحدث اشتراك للمتجر
-    sub = models.Subscription.query.filter_by(store_id=store.id) \
-        .order_by(models.Subscription.start_date.desc()).first()
+    sub = Subscription.query.filter_by(store_id=store.id) \
+        .order_by(Subscription.start_date.desc()).first()
 
-    # التحقق من وجود اشتراك نشط
     if sub and sub.status == 'paid' and sub.end_date > current_time():
         return render_template('store_owner/store_subscription.html', store=store, sub=sub,
                                subscription_price=subscription_price, wallet_number=wallet_number,
                                active=True, duration_days=duration_days)
 
-    # إذا كان هناك طلب معلق قيد المراجعة
     if sub and sub.status == 'pending':
         return redirect(url_for('store.subscription_pending', store_id=store.id))
 
-    # لا يوجد اشتراك نشط أو معلق
     return render_template('store_owner/store_subscription.html', store=store, sub=sub,
                            subscription_price=subscription_price, wallet_number=wallet_number,
                            active=False, duration_days=duration_days)
@@ -53,7 +49,6 @@ def store_subscription_method(store_id, method):
     subscription_price = float(get_setting('subscription_price', 500))
     wallet_number = get_setting('wallet_number', '0995680223')
 
-    # الطرق الإلكترونية غير متاحة حالياً
     if method in ['wallet', 'bank_transfer']:
         return render_template('store_owner/subscription_unavailable.html', store=store, method=method)
 
@@ -61,7 +56,6 @@ def store_subscription_method(store_id, method):
         return render_template('store_owner/subscription_manual.html', store=store,
                                wallet_number=wallet_number, subscription_price=subscription_price)
 
-    # POST: تقديم طلب اشتراك يدوي
     success, msg, sub = SubscriptionService.submit_subscription_request(
         user=user, store=store, payment_ref=None, proof_file=None, payment_method='manual_delivery'
     )
@@ -80,9 +74,8 @@ def subscription_pending(store_id):
         return result[1]
     user, store = result
 
-    # جلب أحدث اشتراك معلق
-    sub = models.Subscription.query.filter_by(store_id=store.id, status='pending') \
-        .order_by(models.Subscription.start_date.desc()).first()
+    sub = Subscription.query.filter_by(store_id=store.id, status='pending') \
+        .order_by(Subscription.start_date.desc()).first()
     if not sub:
         return redirect(url_for('store.store_subscription', store_id=store.id))
 
@@ -99,8 +92,8 @@ def subscription_confirm(store_id):
         return result[1]
     user, store = result
 
-    sub = models.Subscription.query.filter_by(store_id=store.id, status='pending') \
-        .order_by(models.Subscription.start_date.desc()).first()
+    sub = Subscription.query.filter_by(store_id=store.id, status='pending') \
+        .order_by(Subscription.start_date.desc()).first()
     if not sub:
         flash('لا يوجد اشتراك معلق', 'error')
         return redirect(url_for('store.subscription_pending', store_id=store.id))

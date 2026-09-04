@@ -4,7 +4,6 @@ from shared.services.reel_service import ReelService
 
 reels_bp = Blueprint('reels', __name__)
 
-# ---------- الصفحة ----------
 @reels_bp.route('/reels')
 def reels_page():
     page = request.args.get('page', 1, type=int)
@@ -16,7 +15,6 @@ def reels_page():
                            pagination=pagination,
                            user_reaction_map=user_reaction_map)
 
-# ---------- API ----------
 @reels_bp.route('/api/reels')
 def api_get_reels():
     page = request.args.get('page', 1, type=int)

@@ -1,47 +1,45 @@
 from flask import render_template
 from sqlalchemy import func
 from database import db
-import models
-from decorators import role_required
+from models import User, Store, Order, Subscription, Payment
+from shared.decorators import role_required
 from . import admin_bp
 
 @admin_bp.route('/admin/finance')
 @role_required('admin')
 def admin_finance():
-    subscription_revenue = db.session.query(func.sum(models.Subscription.amount)).filter(
-        models.Subscription.status == 'paid'
+    subscription_revenue = db.session.query(func.sum(Subscription.amount)).filter(
+        Subscription.status == 'paid'
     ).scalar() or 0
 
-    paid_subscriptions = models.Subscription.query.filter_by(status='paid').count()
+    paid_subscriptions = Subscription.query.filter_by(status='paid').count()
 
-    order_revenue = db.session.query(func.sum(models.Order.total)).filter(
-        models.Order.status != 'cancelled'
+    order_revenue = db.session.query(func.sum(Order.total)).filter(
+        Order.status != 'cancelled'
     ).scalar() or 0
 
-    total_orders = models.Order.query.filter(models.Order.status != 'cancelled').count()
+    total_orders = Order.query.filter(Order.status != 'cancelled').count()
 
-    delivery_fee_revenue = db.session.query(func.sum(models.Order.delivery_fee)).filter(
-        models.Order.status != 'cancelled'
+    delivery_fee_revenue = db.session.query(func.sum(Order.delivery_fee)).filter(
+        Order.status != 'cancelled'
     ).scalar() or 0
 
-    delivered_orders_count = models.Order.query.filter(models.Order.delivery_person_id.isnot(None)).count()
+    delivered_orders_count = Order.query.filter(Order.delivery_person_id.isnot(None)).count()
 
-    total_users = models.User.query.count()
-    total_stores = models.Store.query.count()
-    active_stores = models.Store.query.filter_by(subscription_status='active').count()
-    pending_subscriptions = models.Subscription.query.filter_by(status='pending').count()
+    total_users = User.query.count()
+    total_stores = Store.query.count()
+    active_stores = Store.query.filter_by(subscription_status='active').count()
+    pending_subscriptions = Subscription.query.filter_by(status='pending').count()
 
-    # استعلام مجمع لأدوار المستخدمين
     user_role_counts = db.session.query(
-        models.User.role, func.count(models.User.id).label('count')
-    ).group_by(models.User.role).all()
+        User.role, func.count(User.id).label('count')
+    ).group_by(User.role).all()
 
-    # استعلام مجمع لحالات الطلبات
     order_status_counts = db.session.query(
-        models.Order.status, func.count(models.Order.id).label('count')
-    ).group_by(models.Order.status).all()
+        Order.status, func.count(Order.id).label('count')
+    ).group_by(Order.status).all()
 
-    total_payments = db.session.query(func.sum(models.Payment.amount)).filter(models.Payment.status == 'paid').scalar() or 0
+    total_payments = db.session.query(func.sum(Payment.amount)).filter(Payment.status == 'paid').scalar() or 0
 
     return render_template(
         'admin/admin_finance.html',

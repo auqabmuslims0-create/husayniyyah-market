@@ -69,7 +69,6 @@
 
 {% block content %}
 <div class="container">
-    <!-- الترويسة -->
     <div class="offers-hero">
         <div class="d-flex align-items-center gap-3">
             <div class="offers-hero-icon">
@@ -83,12 +82,11 @@
         <span class="badge bg-danger offers-count">{{ pagination.total }} عرض</span>
     </div>
 
-    <!-- شريط الفلترة -->
     <div class="filter-bar">
         <form method="GET" action="{{ url_for('offers.offers_page') }}" class="row g-2 align-items-end">
             <div class="col-12 col-md-4">
                 <label class="form-label small fw-bold">بحث</label>
-                <div class="input-group search-input-group">
+                <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input type="text" name="q" value="{{ q or '' }}" class="form-control" placeholder="ابحث في العروض...">
                 </div>
@@ -117,7 +115,6 @@
         </form>
     </div>
 
-    <!-- شبكة العروض -->
     {% if products %}
     <div class="offers-grid">
         {% for product in products %}
@@ -128,7 +125,6 @@
         {{ macros.render_empty_state('bi-tags', 'لا توجد عروض حالياً', url_for('offers.offers_page'), 'تحديث') }}
     {% endif %}
 
-    <!-- ترقيم الصفحات -->
     {% if pagination.pages > 1 %}
     <nav class="mt-4">
         <ul class="pagination justify-content-center">
@@ -157,7 +153,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
-        // حفظ المنتجات في IndexedDB
         const productsData = [
             {% for product in products %}
             {
@@ -176,7 +171,6 @@ document.addEventListener('DOMContentLoaded', function() {
             {% endfor %}
         ];
 
-        // حفظ المتاجر (نفس القائمة المستخدمة في الفلترة)
         const storesData = [
             {% for store in stores %}
             {

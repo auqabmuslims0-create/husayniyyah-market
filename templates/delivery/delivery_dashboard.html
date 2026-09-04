@@ -719,7 +719,7 @@
 
     // تحديث الإشعارات كل 30 ثانية
     setInterval(function() {
-        fetch("{{ url_for('delivery.api_delivery_notifications') }}")
+        fetch("{{ url_for('delivery.delivery_notifications_api') }}")
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success' && data.notifications.length > 0) {

@@ -1,18 +1,19 @@
 from flask import render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import db
-import models
+from models import User
+from shared.repositories.user_repository import UserRepository
 from shared.validators import is_valid_email, is_valid_phone_syrian, is_strong_password
-from utils import save_image, get_upload_path
-from services.user_service import UserService
-from decorators import login_required
+from shared.utils import save_image, get_upload_path
+from shared.services.user_service import UserService
+from shared.decorators import login_required
 from . import auth_bp
 import os
 
 @auth_bp.route('/account')
 @login_required
 def account():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -21,8 +22,7 @@ def account():
 @auth_bp.route('/account/theme', methods=['POST'])
 @login_required
 def update_theme_preference():
-    """تحديث تفضيل الوضع الداكن للمستخدم الحالي."""
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         return jsonify({'status': 'error', 'message': 'غير مسموح'}), 401
 
@@ -32,7 +32,6 @@ def update_theme_preference():
     if dark_mode is None:
         return jsonify({'status': 'error', 'message': 'قيمة غير صالحة'}), 400
 
-    # تحويل القيم النصية إلى منطقية
     if isinstance(dark_mode, str):
         dark_mode = dark_mode.lower() == 'true'
     if not isinstance(dark_mode, bool):
@@ -40,14 +39,14 @@ def update_theme_preference():
 
     user.dark_mode = dark_mode
     db.session.commit()
-    session['dark_mode'] = dark_mode  # تخزين مؤقت في الجلسة للاستخدام الفوري
+    session['dark_mode'] = dark_mode
 
     return jsonify({'status': 'success', 'dark_mode': user.dark_mode})
 
 @auth_bp.route('/api/profile/sync', methods=['POST'])
 @login_required
 def profile_sync():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         return jsonify({'status': 'error', 'message': 'غير مسموح'}), 401
 
@@ -62,10 +61,10 @@ def profile_sync():
     if not is_valid_email(email):
         return jsonify({'status': 'error', 'message': 'البريد غير صالح'}), 400
 
-    existing_username = models.User.query.filter(models.User.username == username, models.User.id != user.id).first()
+    existing_username = User.query.filter(User.username == username, User.id != user.id).first()
     if existing_username:
         return jsonify({'status': 'error', 'message': 'اسم المستخدم موجود'}), 400
-    existing_email = models.User.query.filter(models.User.email == email, models.User.id != user.id).first()
+    existing_email = User.query.filter(User.email == email, User.id != user.id).first()
     if existing_email:
         return jsonify({'status': 'error', 'message': 'البريد مستخدم'}), 400
 
@@ -90,7 +89,7 @@ def profile_sync():
 @auth_bp.route('/account/unlock', methods=['POST'])
 @login_required
 def account_unlock():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -113,7 +112,7 @@ def account_lock():
 @auth_bp.route('/account/update', methods=['POST'])
 @login_required
 def account_update():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -131,12 +130,12 @@ def account_update():
         flash('البريد الإلكتروني غير صالح', 'error')
         return redirect(url_for('auth.account'))
 
-    existing_username = models.User.query.filter(models.User.username == username, models.User.id != user.id).first()
+    existing_username = User.query.filter(User.username == username, User.id != user.id).first()
     if existing_username:
         flash('اسم المستخدم موجود مسبقاً', 'error')
         return redirect(url_for('auth.account'))
 
-    existing_email = models.User.query.filter(models.User.email == email, models.User.id != user.id).first()
+    existing_email = User.query.filter(User.email == email, User.id != user.id).first()
     if existing_email:
         flash('البريد الإلكتروني مستخدم بالفعل', 'error')
         return redirect(url_for('auth.account'))
@@ -167,8 +166,6 @@ def account_update():
         else:
             flash('فشل رفع الصورة - save_image أرجعت None', 'error')
             return redirect(url_for('auth.account'))
-    else:
-        pass  # لا صورة جديدة، لا تغيير
 
     db.session.commit()
     flash('تم تحديث بيانات الحساب بنجاح', 'success')
@@ -177,7 +174,7 @@ def account_update():
 @auth_bp.route('/account/change_password', methods=['POST'])
 @login_required
 def account_change_password():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -211,7 +208,7 @@ def account_change_password():
 @auth_bp.route('/account/delete', methods=['POST'])
 @login_required
 def account_delete():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))

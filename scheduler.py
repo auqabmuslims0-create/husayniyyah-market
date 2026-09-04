@@ -24,7 +24,7 @@ def init_scheduler(app):
         daemon=True
     )
 
-    from services.subscription_service import SubscriptionService
+    from shared.services.subscription_service import SubscriptionService
 
     def subscription_tasks():
         try:

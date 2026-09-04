@@ -1,12 +1,12 @@
-from time_utils import current_time
+from shared.time_utils import current_time
 from flask import request, jsonify, url_for
 from sqlalchemy import func, or_
 from database import db
-import models
-from services.user_service import UserService
-from services.store_service import StoreService
-from services.subscription_service import SubscriptionService
-from services.delivery_service import DeliveryService
+from models import User, Store, Order, Subscription, ChatMessage
+from shared.services.user_service import UserService
+from shared.services.store_service import StoreService
+from shared.services.subscription_service import SubscriptionService
+from shared.services.delivery_service import DeliveryService
 from . import api_bp
 from .helpers import token_required, serialize_user, serialize_store, serialize_order
 
@@ -18,12 +18,12 @@ def is_admin(user):
 def admin_stats(current_user):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    total_users = models.User.query.count()
-    total_stores = models.Store.query.count()
-    total_orders = models.Order.query.count()
-    pending_subscriptions = models.Subscription.query.filter_by(status='pending').count()
-    delivery_persons_count = models.User.query.filter_by(role='delivery').count()
-    delivery_fee_total = db.session.query(func.sum(models.Order.delivery_fee)).scalar() or 0
+    total_users = User.query.count()
+    total_stores = Store.query.count()
+    total_orders = Order.query.count()
+    pending_subscriptions = Subscription.query.filter_by(status='pending').count()
+    delivery_persons_count = User.query.filter_by(role='delivery').count()
+    delivery_fee_total = db.session.query(func.sum(Order.delivery_fee)).scalar() or 0
     return jsonify({
         'total_users': total_users,
         'total_stores': total_stores,
@@ -40,14 +40,14 @@ def admin_get_users(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
     role = request.args.get('role')
     q = request.args.get('q')
-    query = models.User.query
+    query = User.query
     if role:
         query = query.filter_by(role=role)
     if q:
         query = query.filter(or_(
-            models.User.username.ilike(f'%{q}%'),
-            models.User.email.ilike(f'%{q}%'),
-            models.User.phone.ilike(f'%{q}%')
+            User.username.ilike(f'%{q}%'),
+            User.email.ilike(f'%{q}%'),
+            User.phone.ilike(f'%{q}%')
         ))
     users = query.all()
     return jsonify({'users': [serialize_user(u) for u in users]}), 200
@@ -89,13 +89,13 @@ def admin_get_stores(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
     status = request.args.get('status')
     q = request.args.get('q')
-    query = models.Store.query
+    query = Store.query
     if status:
         query = query.filter_by(subscription_status=status)
     if q:
-        query = query.join(models.User, models.Store.owner_id == models.User.id).filter(or_(
-            models.Store.name.ilike(f'%{q}%'),
-            models.User.username.ilike(f'%{q}%')
+        query = query.join(User, Store.owner_id == User.id).filter(or_(
+            Store.name.ilike(f'%{q}%'),
+            User.username.ilike(f'%{q}%')
         ))
     stores = query.all()
     return jsonify({'stores': [serialize_store(s) for s in stores]}), 200
@@ -117,18 +117,18 @@ def admin_get_orders(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
     status = request.args.get('status')
     q = request.args.get('q')
-    query = models.Order.query
+    query = Order.query
     if status:
         query = query.filter_by(status=status)
     if q:
         if q.isdigit():
-            query = query.filter(models.Order.id == int(q))
+            query = query.filter(Order.id == int(q))
         else:
-            query = query.join(models.User, models.Order.customer_id == models.User.id).join(models.Store, models.Order.store_id == models.Store.id).filter(or_(
-                models.User.username.ilike(f'%{q}%'),
-                models.Store.name.ilike(f'%{q}%')
+            query = query.join(User, Order.customer_id == User.id).join(Store, Order.store_id == Store.id).filter(or_(
+                User.username.ilike(f'%{q}%'),
+                Store.name.ilike(f'%{q}%')
             ))
-    orders = query.order_by(models.Order.created_at.desc()).all()
+    orders = query.order_by(Order.created_at.desc()).all()
     return jsonify({'orders': [serialize_order(o) for o in orders]}), 200
 
 @api_bp.route('/admin/orders/<int:order_id>/status', methods=['POST'])
@@ -136,7 +136,7 @@ def admin_get_orders(current_user):
 def admin_update_order_status(current_user, order_id):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    order = models.Order.query.get_or_404(order_id)
+    order = Order.query.get_or_404(order_id)
     data = request.get_json(silent=True) or {}
     new_status = data.get('status')
     if new_status not in ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']:
@@ -163,7 +163,7 @@ def admin_get_subscriptions(current_user):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
     status = request.args.get('status')
-    query = models.Subscription.query
+    query = Subscription.query
     if status:
         query = query.filter_by(status=status)
     subs = query.all()
@@ -207,7 +207,7 @@ def admin_reject_subscription(current_user, sub_id):
 def admin_get_delivery_persons(current_user):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    persons = models.User.query.filter_by(role='delivery').all()
+    persons = User.query.filter_by(role='delivery').all()
     return jsonify({'persons': [serialize_user(u) for u in persons]}), 200
 
 @api_bp.route('/admin/delivery_persons', methods=['POST'])
@@ -224,8 +224,8 @@ def admin_create_delivery_person(current_user):
     if not username or not email or not password:
         return jsonify({'message': 'اسم المستخدم والبريد وكلمة المرور مطلوبة'}), 400
 
-    from utils import is_strong_password, is_valid_email, generate_public_id
-    from shared.validators import is_valid_phone_syrian
+    from shared.validators import is_strong_password, is_valid_email, is_valid_phone_syrian
+    from shared.utils import generate_public_id
     from werkzeug.security import generate_password_hash
 
     strong, msg = is_strong_password(password)
@@ -235,9 +235,9 @@ def admin_create_delivery_person(current_user):
     if not is_valid_email(email):
         return jsonify({'message': 'البريد الإلكتروني غير صالح'}), 400
 
-    if models.User.query.filter_by(username=username).first():
+    if User.query.filter_by(username=username).first():
         return jsonify({'message': 'اسم المستخدم موجود مسبقاً'}), 400
-    if models.User.query.filter_by(email=email).first():
+    if User.query.filter_by(email=email).first():
         return jsonify({'message': 'البريد الإلكتروني مستخدم بالفعل'}), 400
 
     if phone and not is_valid_phone_syrian(phone):
@@ -245,7 +245,7 @@ def admin_create_delivery_person(current_user):
 
     public_id = generate_public_id()
     full_phone = '+963' + phone if phone else ''
-    user = models.User(
+    user = User(
         username=username,
         email=email,
         phone=full_phone,
@@ -296,16 +296,16 @@ def admin_update_delivery_shift(current_user, user_id):
 def admin_finance(current_user):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    subscription_revenue = db.session.query(func.sum(models.Subscription.amount)).filter(models.Subscription.status == 'paid').scalar() or 0
-    order_revenue = db.session.query(func.sum(models.Order.total)).filter(models.Order.status != 'cancelled').scalar() or 0
-    delivery_fee_revenue = db.session.query(func.sum(models.Order.delivery_fee)).filter(models.Order.status != 'cancelled').scalar() or 0
-    total_users = models.User.query.count()
+    subscription_revenue = db.session.query(func.sum(Subscription.amount)).filter(Subscription.status == 'paid').scalar() or 0
+    order_revenue = db.session.query(func.sum(Order.total)).filter(Order.status != 'cancelled').scalar() or 0
+    delivery_fee_revenue = db.session.query(func.sum(Order.delivery_fee)).filter(Order.status != 'cancelled').scalar() or 0
+    total_users = User.query.count()
     order_status_counts = {}
     for status in ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']:
-        order_status_counts[status] = models.Order.query.filter_by(status=status).count()
+        order_status_counts[status] = Order.query.filter_by(status=status).count()
     user_role_counts = {}
     for role in ['admin', 'owner', 'customer', 'delivery']:
-        user_role_counts[role] = models.User.query.filter_by(role=role).count()
+        user_role_counts[role] = User.query.filter_by(role=role).count()
     return jsonify({
         'subscription_revenue': subscription_revenue,
         'order_revenue': order_revenue,
@@ -320,7 +320,7 @@ def admin_finance(current_user):
 def admin_chat_users(current_user):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    users = models.User.query.filter(models.User.id != current_user.id).all()
+    users = User.query.filter(User.id != current_user.id).all()
     return jsonify({'users': [serialize_user(u) for u in users]}), 200
 
 @api_bp.route('/admin/chats/<int:user_id>', methods=['GET'])
@@ -328,10 +328,10 @@ def admin_chat_users(current_user):
 def admin_chat_messages(current_user, user_id):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    messages = models.ChatMessage.query.filter(
-        ((models.ChatMessage.sender_id == current_user.id) & (models.ChatMessage.receiver_id == user_id)) |
-        ((models.ChatMessage.sender_id == user_id) & (models.ChatMessage.receiver_id == current_user.id))
-    ).order_by(models.ChatMessage.created_at.asc()).all()
+    messages = ChatMessage.query.filter(
+        ((ChatMessage.sender_id == current_user.id) & (ChatMessage.receiver_id == user_id)) |
+        ((ChatMessage.sender_id == user_id) & (ChatMessage.receiver_id == current_user.id))
+    ).order_by(ChatMessage.created_at.asc()).all()
     messages_data = []
     for msg in messages:
         messages_data.append({
@@ -354,7 +354,7 @@ def admin_send_message(current_user):
     message = data.get('message', '').strip()
     if not user_id or not message:
         return jsonify({'message': 'بيانات غير كاملة'}), 400
-    msg = models.ChatMessage(
+    msg = ChatMessage(
         sender_id=current_user.id,
         receiver_id=int(user_id),
         message=message,

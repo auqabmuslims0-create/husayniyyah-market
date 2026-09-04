@@ -1,13 +1,14 @@
 import os
 from flask import render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
-from database import db
-import models
 import secrets
+from database import db
+from models import User
+from shared.repositories.user_repository import UserRepository
 from shared.validators import is_valid_email, is_valid_phone_syrian, is_strong_password
 from shared.security import record_login_attempt, get_login_attempts, clear_login_attempts
-from utils import generate_public_id, save_image
-from decorators import login_required
+from shared.utils import generate_public_id, save_image
+from shared.decorators import login_required
 from . import auth_bp
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
@@ -34,11 +35,11 @@ def register():
                 flash('رقم الهاتف يجب أن يبدأ بـ 9 ويتكون من 9 أرقام', 'error')
                 return redirect(url_for('auth.register', step=1))
 
-            if models.User.query.filter_by(username=username).first():
+            if UserRepository.get_by_username(username):
                 flash('اسم المستخدم موجود مسبقاً', 'error')
                 return redirect(url_for('auth.register', step=1))
 
-            if models.User.query.filter_by(email=email).first():
+            if UserRepository.get_by_email(email):
                 flash('البريد الإلكتروني مستخدم بالفعل', 'error')
                 return redirect(url_for('auth.register', step=1))
 
@@ -95,12 +96,11 @@ def register():
 
             avatar_url = None
             if avatar_file and avatar_file.filename != '':
-                # فحص حجم الملف قبل الرفع
                 avatar_file.seek(0, os.SEEK_END)
                 file_size = avatar_file.tell()
                 avatar_file.seek(0)
 
-                if file_size > 10 * 1024 * 1024:  # 10MB
+                if file_size > 10 * 1024 * 1024:
                     flash('حجم الصورة كبير جداً (الحد الأقصى 10MB)', 'error')
                     return redirect(url_for('auth.register', step=3))
 
@@ -114,7 +114,7 @@ def register():
                     flash('فشل رفع الصورة، تأكد من الصيغة المدعومة (png, jpg, jpeg, gif, webp)', 'error')
                     return redirect(url_for('auth.register', step=3))
 
-            user = models.User(
+            user = User(
                 username=reg['username'],
                 email=reg['email'],
                 phone=reg.get('phone'),
@@ -153,7 +153,7 @@ def show_public_id():
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
-        user = db.session.get(models.User, session['user_id'])
+        user = db.session.get(User, session['user_id'])
         if user:
             return redirect(url_for('auth.dashboard'))
 
@@ -171,8 +171,8 @@ def login():
             flash('تم تجاوز عدد المحاولات المسموح، حاول بعد 5 دقائق', 'danger')
             return render_template('auth/login.html', login_error=None)
 
-        user = models.User.query.filter(
-            (models.User.username == login_id) | (models.User.email == login_id)
+        user = User.query.filter(
+            (User.username == login_id) | (User.email == login_id)
         ).first()
 
         if user and check_password_hash(user.password_hash, password):
@@ -207,7 +207,7 @@ def logout():
 @auth_bp.route('/dashboard')
 @login_required
 def dashboard():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))

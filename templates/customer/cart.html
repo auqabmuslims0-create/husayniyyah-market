@@ -487,20 +487,17 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // إعداد زر الحذف في وضع الاتصال
     document.querySelectorAll('.btn-remove').forEach(btn => {
         btn.addEventListener('click', function() {
             const productId = this.dataset.productId;
             if (confirm('هل تريد إزالة هذا المنتج من السلة؟')) {
                 LocalStore.removeFromCart(parseInt(productId));
                 LocalStore.updateCartBadges();
-                // إعادة تحميل الصفحة لتحديث عرض الخادم
                 location.reload();
             }
         });
     });
 
-    // دالة مسح سلة متجر معين (من الزر "مسح الكل")
     window.clearLocalStoreCart = function(storeId, productIds) {
         const cart = LocalStore.getCart();
         productIds.forEach(pid => { delete cart[String(pid)]; });
@@ -509,7 +506,6 @@ document.addEventListener('DOMContentLoaded', function() {
         location.reload();
     };
 
-    // ==== التعامل مع وضع عدم الاتصال ====
     const onlineCartContent = document.getElementById('onlineCartContent');
     const offlineCartContainer = document.getElementById('offlineCartContainer');
     const offlineCartItems = document.getElementById('offlineCartItems');
@@ -560,7 +556,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.removeOfflineCartItem = function(pid) {
         LocalStore.removeFromCart(parseInt(pid));
         LocalStore.updateCartBadges();
-        renderOfflineCart(); // إعادة رسم السلة دون إعادة تحميل الصفحة
+        renderOfflineCart();
     };
 
     if (!navigator.onLine) {

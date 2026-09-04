@@ -5,7 +5,7 @@
  */
 const OfflineDB = (function() {
     const DB_NAME = 'husayniyyah_offline_db';
-    const DB_VERSION = 3; // تمت زيادة الإصدار لدعم مخزن الإشعارات
+    const DB_VERSION = 3;
 
     let db = null;
 
@@ -20,26 +20,22 @@ const OfflineDB = (function() {
             request.onupgradeneeded = function(event) {
                 const database = event.target.result;
 
-                // إنشاء أو تحديث مخزن المنتجات
                 if (!database.objectStoreNames.contains('products')) {
                     const productsStore = database.createObjectStore('products', { keyPath: 'id' });
                     productsStore.createIndex('store_id', 'store_id', { unique: false });
                     productsStore.createIndex('name', 'name', { unique: false });
                 }
 
-                // إنشاء أو تحديث مخزن المتاجر
                 if (!database.objectStoreNames.contains('stores')) {
                     const storesStore = database.createObjectStore('stores', { keyPath: 'id' });
                     storesStore.createIndex('name', 'name', { unique: false });
                 }
 
-                // إنشاء أو تحديث مخزن الطلبات المعلقة
                 if (!database.objectStoreNames.contains('pendingOrders')) {
                     const ordersStore = database.createObjectStore('pendingOrders', { keyPath: 'local_id', autoIncrement: true });
                     ordersStore.createIndex('created_at', 'created_at', { unique: false });
                 }
 
-                // إنشاء مخزن الإشعارات (جديد)
                 if (!database.objectStoreNames.contains('notifications')) {
                     const notificationsStore = database.createObjectStore('notifications', { keyPath: 'id' });
                     notificationsStore.createIndex('is_read', 'is_read', { unique: false });
@@ -109,7 +105,6 @@ const OfflineDB = (function() {
         });
     }
 
-    // تطبيع بيانات المنتج لتوحيد الحقول
     function normalizeProduct(p) {
         return {
             id: p.id,
@@ -126,7 +121,6 @@ const OfflineDB = (function() {
         };
     }
 
-    // دوال متخصصة للمنتجات
     async function saveProduct(product) {
         const item = normalizeProduct(product);
         return addItem('products', item);
@@ -153,7 +147,6 @@ const OfflineDB = (function() {
         return all.filter(p => p.store_id === storeId);
     }
 
-    // دوال للمتاجر
     async function saveStore(store) {
         return addItem('stores', {
             id: store.id,
@@ -194,7 +187,6 @@ const OfflineDB = (function() {
         return getAll('stores');
     }
 
-    // دوال للطلبات المعلقة
     async function savePendingOrder(order) {
         order.created_at = new Date().toISOString();
         return addItem('pendingOrders', order);
@@ -208,7 +200,6 @@ const OfflineDB = (function() {
         return deleteItem('pendingOrders', localId);
     }
 
-    // دوال الإشعارات
     async function saveNotification(notification) {
         return addItem('notifications', notification);
     }

@@ -2,10 +2,10 @@ from flask import render_template, request, redirect, url_for, flash
 from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
 from database import db
-import models
-from services.store_service import StoreService
-from decorators import role_required
-from time_utils import current_time
+from models import Store, User, Product, Order
+from shared.services.store_service import StoreService
+from shared.decorators import role_required
+from shared.time_utils import current_time
 from . import admin_bp
 
 @admin_bp.route('/admin/stores')
@@ -16,19 +16,19 @@ def admin_stores():
     page = request.args.get('page', 1, type=int)
     per_page = 12
 
-    query = models.Store.query.options(selectinload(models.Store.owner))
+    query = Store.query.options(selectinload(Store.owner))
     if q:
         query = query.filter(
             or_(
-                models.Store.name.ilike(f'%{q}%'),
-                models.Store.owner.has(models.User.username.ilike(f'%{q}%')),
-                models.Store.owner.has(models.User.email.ilike(f'%{q}%'))
+                Store.name.ilike(f'%{q}%'),
+                Store.owner.has(User.username.ilike(f'%{q}%')),
+                Store.owner.has(User.email.ilike(f'%{q}%'))
             )
         )
     if status_filter in ['active', 'pending', 'suspended', 'cancelled', 'expired']:
         query = query.filter_by(subscription_status=status_filter)
 
-    pagination = query.order_by(models.Store.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = query.order_by(Store.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
     stores = pagination.items
     now = current_time()
     for store in stores:
@@ -42,12 +42,12 @@ def admin_stores():
     if stores:
         store_ids = [s.id for s in stores]
         product_counts = dict(db.session.query(
-            models.Product.store_id, func.count(models.Product.id)
-        ).filter(models.Product.store_id.in_(store_ids)).group_by(models.Product.store_id).all())
+            Product.store_id, func.count(Product.id)
+        ).filter(Product.store_id.in_(store_ids)).group_by(Product.store_id).all())
 
         order_counts = dict(db.session.query(
-            models.Order.store_id, func.count(models.Order.id)
-        ).filter(models.Order.store_id.in_(store_ids)).group_by(models.Order.store_id).all())
+            Order.store_id, func.count(Order.id)
+        ).filter(Order.store_id.in_(store_ids)).group_by(Order.store_id).all())
 
         for s in stores:
             store_stats[s.id] = {
@@ -63,14 +63,11 @@ def admin_stores():
 def admin_toggle_store(store_id):
     action = request.form.get('action', '').strip()
     if action == 'activate':
-        # تفعيل إداري: يسمح بالتفعيل حتى بدون اشتراك ساري
         success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=True)
     elif action == 'suspend':
-        # تعليق المتجر
         success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=False)
     else:
-        # إذا لم يتم إرسال action، نحاول تحديده من حالة المتجر (احتياط)
-        store = models.Store.query.get_or_404(store_id)
+        store = Store.query.get_or_404(store_id)
         if store.subscription_status == 'active':
             success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=False)
         else:

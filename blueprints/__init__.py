@@ -1,1 +1,1 @@
-# يُستخدم لاستيراد الـ Blueprints من الحزمة
+# Blueprints package

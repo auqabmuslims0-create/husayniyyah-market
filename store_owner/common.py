@@ -1,6 +1,6 @@
 from flask import session, redirect, url_for, abort, flash
 from database import db
-import models
+from models import User, Store
 
 def check_store_access(store_id):
     """التحقق من أن المستخدم الحالي هو صاحب المتجر وأنه نشط.
@@ -10,7 +10,7 @@ def check_store_access(store_id):
         flash('يجب تسجيل الدخول أولاً', 'error')
         return None, redirect(url_for('auth.login'))
 
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         session.clear()
         flash('الجلسة غير صالحة، يرجى تسجيل الدخول مرة أخرى', 'error')
@@ -21,7 +21,7 @@ def check_store_access(store_id):
         flash('حسابك محظور، يرجى التواصل مع الإدارة', 'error')
         return None, redirect(url_for('auth.login'))
 
-    store = db.session.get(models.Store, store_id)
+    store = db.session.get(Store, store_id)
     if not store:
         abort(404)
 

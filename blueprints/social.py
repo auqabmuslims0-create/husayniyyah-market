@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from database import db
-from decorators import api_login_required
-import models
+from shared.decorators import api_login_required
+from models import Product, ProductComment, ProductReaction
 from sqlalchemy.orm import joinedload
 
 social_bp = Blueprint('social', __name__)
@@ -17,8 +17,8 @@ def serialize_comment(c):
 
 @social_bp.route('/api/products/<int:product_id>/comments', methods=['GET'])
 def get_comments(product_id):
-    product = models.Product.query.options(
-        joinedload(models.Product.comments).joinedload(models.ProductComment.user)
+    product = Product.query.options(
+        joinedload(Product.comments).joinedload(ProductComment.user)
     ).filter_by(id=product_id).first_or_404()
     comments = sorted(product.comments, key=lambda x: x.created_at, reverse=True)
     return jsonify({'comments': [serialize_comment(c) for c in comments]}), 200
@@ -31,8 +31,8 @@ def add_comment(product_id):
     if not text:
         return jsonify({'message': 'التعليق لا يمكن أن يكون فارغاً'}), 400
 
-    product = models.Product.query.get_or_404(product_id)
-    comment = models.ProductComment(product_id=product.id, user_id=session['user_id'], text=text)
+    product = Product.query.get_or_404(product_id)
+    comment = ProductComment(product_id=product.id, user_id=session['user_id'], text=text)
     try:
         db.session.add(comment)
         db.session.commit()
@@ -44,7 +44,7 @@ def add_comment(product_id):
 @social_bp.route('/api/comments/<int:comment_id>', methods=['PUT'])
 @api_login_required
 def edit_comment(comment_id):
-    comment = models.ProductComment.query.get_or_404(comment_id)
+    comment = ProductComment.query.get_or_404(comment_id)
     if comment.user_id != session['user_id']:
         return jsonify({'message': 'غير مسموح'}), 403
 
@@ -64,7 +64,7 @@ def edit_comment(comment_id):
 @social_bp.route('/api/comments/<int:comment_id>', methods=['DELETE'])
 @api_login_required
 def delete_comment(comment_id):
-    comment = models.ProductComment.query.get_or_404(comment_id)
+    comment = ProductComment.query.get_or_404(comment_id)
     if comment.user_id != session['user_id']:
         return jsonify({'message': 'غير مسموح'}), 403
     try:
@@ -83,11 +83,11 @@ def react(product_id):
     if reaction_type not in ['like', 'love', 'wow', 'sad', 'angry']:
         return jsonify({'message': 'نوع التفاعل غير صالح'}), 400
 
-    product = models.Product.query.get_or_404(product_id)
+    product = Product.query.get_or_404(product_id)
     user_id = session['user_id']
 
     try:
-        existing = models.ProductReaction.query.filter_by(product_id=product.id, user_id=user_id).first()
+        existing = ProductReaction.query.filter_by(product_id=product.id, user_id=user_id).first()
         if existing and existing.reaction_type == reaction_type:
             db.session.delete(existing)
             db.session.commit()
@@ -97,7 +97,7 @@ def react(product_id):
             db.session.commit()
             return jsonify({'message': 'تم تحديث التفاعل'}), 200
         else:
-            reaction = models.ProductReaction(product_id=product.id, user_id=user_id, reaction_type=reaction_type)
+            reaction = ProductReaction(product_id=product.id, user_id=user_id, reaction_type=reaction_type)
             db.session.add(reaction)
             db.session.commit()
             return jsonify({'message': 'تم إضافة التفاعل'}), 201

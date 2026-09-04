@@ -345,7 +345,6 @@ function togglePassword(inputId, btn) {
     }
 }
 
-// عند تقديم نموذج تعديل البيانات، قم بتحديث LocalStore محلياً قبل الإرسال
 document.getElementById('editProfileForm').addEventListener('submit', function(e) {
     const username = this.querySelector('input[name="username"]').value;
     const email = this.querySelector('input[name="email"]').value;
@@ -359,26 +358,21 @@ document.getElementById('editProfileForm').addEventListener('submit', function(e
     };
     LocalStore.setProfile(profile);
 
-    // التحقق من وجود ملف صورة
     const avatarInput = this.querySelector('input[name="avatar"]');
     const hasAvatar = avatarInput && avatarInput.files.length > 0;
 
-    // إذا كان غير متصل ولا يوجد ملف صورة، نمنع الإرسال ونحفظ محلياً
     if (!navigator.onLine && !hasAvatar) {
         e.preventDefault();
         showToast('تم حفظ التغييرات محلياً، ستتم مزامنتها عند الاتصال', 'info');
         const modal = bootstrap.Modal.getInstance(document.getElementById('editProfileModal'));
         if (modal) modal.hide();
     }
-    // إذا كان هناك ملف صورة، نسمح بالإرسال مباشرة (لأن رفع الصورة يتطلب اتصالاً)
 });
 
-// عند تحميل الصفحة، إذا كان غير متصل، نعرض البيانات المحلية بدلاً من الخادم
 document.addEventListener('DOMContentLoaded', function() {
     if (!navigator.onLine) {
         const localProfile = LocalStore.getProfile();
         if (localProfile) {
-            // تحديث العناصر الظاهرة
             const nameElement = document.querySelector('.profile-card h2');
             const emailElement = document.querySelector('.profile-card p:nth-of-type(1)');
             const phoneElement = document.querySelector('.profile-card p:nth-of-type(2)');

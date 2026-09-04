@@ -1,5 +1,5 @@
 from models import Order
-from time_utils import current_time
+from shared.time_utils import current_time
 
 
 def is_delivery_available(user):

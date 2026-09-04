@@ -2,12 +2,12 @@ from shared.validators import is_valid_phone_syrian
 from flask import render_template, request, redirect, url_for, flash, abort
 from sqlalchemy.orm import joinedload
 from database import db
-import models
+from models import Product, ProductComment
 import os
 from datetime import timedelta
-from time_utils import current_time
-from utils import save_image, get_upload_path, delete_cloudinary_file
-from decorators import role_required
+from shared.time_utils import current_time
+from shared.utils import save_image, get_upload_path, delete_cloudinary_file
+from shared.decorators import role_required
 from . import store_bp
 from .common import check_store_access
 
@@ -92,14 +92,14 @@ def store_comments(store_id):
         return result[1]
     user, store = result
 
-    comments = models.ProductComment.query.join(
-        models.Product, models.ProductComment.product_id == models.Product.id
+    comments = ProductComment.query.join(
+        Product, ProductComment.product_id == Product.id
     ).filter(
-        models.Product.store_id == store.id
+        Product.store_id == store.id
     ).options(
-        joinedload(models.ProductComment.user),
-        joinedload(models.ProductComment.product)
-    ).order_by(models.ProductComment.created_at.desc()).all()
+        joinedload(ProductComment.user),
+        joinedload(ProductComment.product)
+    ).order_by(ProductComment.created_at.desc()).all()
 
     grouped = {}
     for comment in comments:

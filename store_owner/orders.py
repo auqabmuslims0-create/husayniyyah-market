@@ -1,12 +1,12 @@
 from flask import render_template, request, redirect, url_for, flash, abort
 from database import db
-import models
+from models import User, Order, OrderItem
 from datetime import timedelta
 from sqlalchemy.orm import selectinload
-from time_utils import current_time
-from delivery_utils import is_delivery_available
-from decorators import role_required
-from services.order_service import OrderService
+from shared.time_utils import current_time
+from shared.delivery_utils import is_delivery_available
+from shared.decorators import role_required
+from shared.services.order_service import OrderService
 from . import store_bp
 from .common import check_store_access
 
@@ -24,27 +24,27 @@ def store_orders(store_id):
 
     allowed_statuses = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']
 
-    query = models.Order.query.filter_by(store_id=store.id).options(
-        selectinload(models.Order.items).selectinload(models.OrderItem.product),
-        selectinload(models.Order.delivery_person),
-        selectinload(models.Order.customer)
+    query = Order.query.filter_by(store_id=store.id).options(
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.delivery_person),
+        selectinload(Order.customer)
     )
     if status_filter in allowed_statuses:
-        query = query.filter(models.Order.status == status_filter)
+        query = query.filter(Order.status == status_filter)
 
-    query = query.order_by(models.Order.created_at.desc())
+    query = query.order_by(Order.created_at.desc())
 
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     orders = pagination.items
 
-    all_delivery_persons = models.User.query.filter_by(role='delivery').all()
+    all_delivery_persons = User.query.filter_by(role='delivery').all()
     delivery_persons = [p for p in all_delivery_persons if is_delivery_available(p)]
 
     delivery_person_stats = {}
     for person in delivery_persons:
-        active_orders = models.Order.query.filter(
-            models.Order.delivery_person_id == person.id,
-            models.Order.status.in_(['ready', 'delivering'])
+        active_orders = Order.query.filter(
+            Order.delivery_person_id == person.id,
+            Order.status.in_(['ready', 'delivering'])
         ).count()
         delivery_person_stats[person.id] = {
             'active_orders': active_orders,
@@ -68,7 +68,7 @@ def update_order_status(store_id, order_id):
         return result[1]
     user, store = result
 
-    order = models.Order.query.get_or_404(order_id)
+    order = Order.query.get_or_404(order_id)
     new_status = request.form.get('status')
     delivery_person_id = request.form.get('delivery_person_id', type=int)
     notify_delivery = request.form.get('notify_delivery') == 'yes'

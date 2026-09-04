@@ -1,4 +1,4 @@
-const CACHE_NAME = 'husayniyyah-cache-v9';
+const CACHE_NAME = 'husayniyyah-cache-v10';
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -24,7 +24,6 @@ const STATIC_ASSETS = [
   '/static/offline.html'
 ];
 
-// الصفحات العامة التي نسمح بتخزينها للعمل دون اتصال
 const PUBLIC_PATHS = [
   '/',
   '/market',
@@ -39,7 +38,6 @@ const PUBLIC_PATHS = [
   '/contact'
 ];
 
-// مسارات لوحات التحكم التي نسمح بتخزينها (صفحات القراءة فقط)
 const PROTECTED_PATHS = [
   '/admin',
   '/my_stores',
@@ -49,7 +47,6 @@ const PROTECTED_PATHS = [
 
 const CACHEABLE_PATHS = [...PUBLIC_PATHS, ...PROTECTED_PATHS];
 
-// أنماط API المهمة التي نريد تخزين استجاباتها
 const API_CACHE_PATTERNS = [
   /^\/api\/products/,
   /^\/api\/stores/,
@@ -109,7 +106,6 @@ self.addEventListener('fetch', event => {
 
   if (request.method !== 'GET') return;
 
-  // التعامل مع طلبات الصفحات (navigate)
   if (request.mode === 'navigate') {
     const url = new URL(request.url);
     const isCacheable = CACHEABLE_PATHS.some(path => {
@@ -137,7 +133,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // التعامل مع طلبات API GET
   if (request.url.includes('/api/')) {
     const shouldCache = API_CACHE_PATTERNS.some(pattern => pattern.test(new URL(request.url).pathname));
     if (shouldCache) {
@@ -153,7 +148,6 @@ self.addEventListener('fetch', event => {
           .catch(() => {
             return caches.match(request).then(cached => {
               if (cached) return cached;
-              // إذا لم يوجد cached، نعيد استجابة فارغة برسالة خطأ
               return new Response(JSON.stringify({ error: 'offline' }), {
                 headers: { 'Content-Type': 'application/json' }
               });
@@ -164,7 +158,6 @@ self.addEventListener('fetch', event => {
     }
   }
 
-  // التعامل مع الصور المرفوعة
   if (request.destination === 'image' && request.url.includes('/static/uploads/')) {
     event.respondWith(
       fetch(request)
@@ -180,7 +173,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // التعامل مع الأصول الثابتة (CSS, JS, Fonts)
   if (
     request.destination === 'style' ||
     request.destination === 'script' ||
@@ -210,11 +202,9 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // أي طلب آخر
   event.respondWith(fetch(request));
 });
 
-// ===== Push Notifications =====
 self.addEventListener('push', event => {
   console.log('Push received', event);
   let data = { title: 'سوق الحسينية', message: 'إشعار جديد', url: '/' };

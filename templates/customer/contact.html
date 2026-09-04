@@ -106,12 +106,8 @@
         font-size: 0.9rem;
         color: #fff;
     }
-    .message-row.sent .message-avatar {
-        background: var(--chat-primary);
-    }
-    .message-row.received .message-avatar {
-        background: #6c757d;
-    }
+    .message-row.sent .message-avatar { background: var(--chat-primary); }
+    .message-row.received .message-avatar { background: #6c757d; }
     .message-bubble {
         padding: 10px 14px;
         border-radius: 18px;
@@ -128,10 +124,7 @@
         color: var(--chat-received-text);
         border-bottom-right-radius: 4px;
     }
-    .message-text {
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
+    .message-text { font-size: 0.95rem; line-height: 1.5; }
     .message-time {
         display: block;
         font-size: 0.7rem;
@@ -139,20 +132,14 @@
         margin-top: 4px;
         text-align: left;
     }
-    .message-row.sent .message-time {
-        text-align: right;
-    }
+    .message-row.sent .message-time { text-align: right; }
     .chat-input-area {
         padding: 12px 15px;
         background: var(--chat-card-bg);
         border-top: 1px solid var(--chat-border);
         flex-shrink: 0;
     }
-    .chat-input-area form {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
+    .chat-input-area form { display: flex; gap: 10px; align-items: center; }
     .chat-input-area input {
         flex: 1;
         border-radius: 30px;
@@ -184,30 +171,13 @@
         flex-shrink: 0;
         box-shadow: 0 4px 12px rgba(46,93,52,0.3);
     }
-    .send-btn:hover {
-        transform: scale(1.08);
-        box-shadow: 0 8px 20px rgba(46,93,52,0.5);
-    }
-    .send-btn:active {
-        transform: scale(0.95);
-    }
-    body.dark-mode .send-btn {
-        background: linear-gradient(135deg, #c9a227, #b8941f);
-        color: #000;
-    }
-    .empty-chat {
-        text-align: center;
-        color: #6c757d;
-        margin: auto;
-    }
+    .send-btn:hover { transform: scale(1.08); box-shadow: 0 8px 20px rgba(46,93,52,0.5); }
+    .send-btn:active { transform: scale(0.95); }
+    body.dark-mode .send-btn { background: linear-gradient(135deg, #c9a227, #b8941f); color: #000; }
+    .empty-chat { text-align: center; color: #6c757d; margin: auto; }
     @media (max-width: 576px) {
-        .chat-card {
-            height: calc(100vh - 100px);
-            border-radius: 0;
-        }
-        .message-row {
-            max-width: 90%;
-        }
+        .chat-card { height: calc(100vh - 100px); border-radius: 0; }
+        .message-row { max-width: 90%; }
     }
 </style>
 {% endblock %}
@@ -226,7 +196,6 @@
             <div class="empty-chat">ابدأ المحادثة مع فريق الدعم</div>
         </div>
         <div class="chat-input-area">
-            <!-- نموذج إرسال عادي بدون AJAX -->
             <form id="chatForm" action="{{ url_for('services.send_contact_message') }}" method="post">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 <input type="text" id="messageInput" name="message" placeholder="اكتب رسالتك هنا..." required autocomplete="off">
@@ -281,7 +250,6 @@
             .catch(err => console.error('Error loading messages:', err));
     }
 
-    // تحميل الرسائل عند فتح الصفحة وتحديث دوري
     loadMessages();
     setInterval(loadMessages, 5000);
 </script>

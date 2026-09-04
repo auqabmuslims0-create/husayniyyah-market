@@ -2,13 +2,11 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 from flask import current_app, request
-from time_utils import current_time
+from shared.time_utils import current_time
 from database import db
-
-# استيراد دوال التحقق من validators لإعادة تصديرها
 from shared.validators import is_strong_password, is_valid_email, is_valid_phone_syrian
 
-# إعداد Cloudinary
+# استيراد Cloudinary
 import cloudinary
 import cloudinary.uploader
 
@@ -36,7 +34,7 @@ def get_upload_path(filename):
     if not filename:
         return None
     if filename.startswith('http'):
-        return None  # رابط سحابي لا يحتاج مسارًا محليًا
+        return None
     if filename.startswith('uploads/'):
         return os.path.join(current_app.config['UPLOAD_FOLDER'], filename[len('uploads/'):])
     return os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
@@ -122,11 +120,10 @@ def safe_referrer():
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi'}
-MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
-MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_IMAGE_SIZE = 10 * 1024 * 1024
+MAX_VIDEO_SIZE = 100 * 1024 * 1024
 
 def _secure_file(file, allowed_extensions, max_size):
-    """فحص الملف من حيث الامتداد والحجم و MIME type."""
     if not file or file.filename == '':
         return None
     filename = secure_filename(file.filename)
@@ -146,17 +143,12 @@ def _secure_file(file, allowed_extensions, max_size):
     return ext
 
 def delete_cloudinary_file(url):
-    """حذف ملف من Cloudinary إذا كان الرابط سحابيًا."""
     if not url or not url.startswith('http'):
         return
     try:
-        # استخراج public_id من الرابط
         parts = url.split('/')
-        # الرابط النموذجي: https://res.cloudinary.com/<cloud>/image/upload/v1234567890/<folder>/<public_id>.<ext>
-        # نأخذ الجزء بعد آخر '/'
         filename_with_ext = parts[-1]
         public_id = filename_with_ext.rsplit('.', 1)[0]
-        # يجب أن يتضمن المجلد
         folder = ''
         if 'upload' in parts:
             idx = parts.index('upload')
@@ -168,7 +160,6 @@ def delete_cloudinary_file(url):
         current_app.logger.error(f"Failed to delete old Cloudinary file: {e}")
 
 def save_image(file, old_url=None):
-    """رفع صورة إلى Cloudinary وإرجاع الرابط السحابي، مع حذف القديم إن وجد."""
     ext = _secure_file(file, ALLOWED_IMAGE_EXTENSIONS, MAX_IMAGE_SIZE)
     if not ext:
         return None
@@ -189,7 +180,6 @@ def save_image(file, old_url=None):
         return None
 
 def save_video(file, old_url=None):
-    """رفع فيديو إلى Cloudinary مع دعم الرفع المجزأ، وحذف القديم إن وجد."""
     ext = _secure_file(file, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_SIZE)
     if not ext:
         return None
@@ -199,7 +189,7 @@ def save_video(file, old_url=None):
             file,
             folder="husayniyyah_market/videos",
             resource_type="video",
-            chunk_size=6000000,  # 6MB per chunk
+            chunk_size=6000000,
             timeout=120
         )
         new_url = upload_result.get('secure_url')

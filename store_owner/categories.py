@@ -1,7 +1,7 @@
 from flask import render_template, request, redirect, url_for, flash, abort
 from database import db
-import models
-from decorators import role_required
+from models import Category, Product
+from shared.decorators import role_required
 from . import store_bp
 from .common import check_store_access
 
@@ -12,7 +12,7 @@ def store_categories(store_id):
     if result[0] is None:
         return result[1]
     user, store = result
-    categories = models.Category.query.filter_by(store_id=store.id).all()
+    categories = Category.query.filter_by(store_id=store.id).all()
     return render_template('store_owner/category_list.html', store=store, categories=categories)
 
 @store_bp.route('/store/<int:store_id>/categories/new', methods=['GET', 'POST'])
@@ -33,18 +33,18 @@ def new_category(store_id):
 
         parent = None
         if parent_id:
-            parent = db.session.get(models.Category, int(parent_id))
+            parent = db.session.get(Category, int(parent_id))
             if not parent or parent.store_id != store.id:
                 flash('التصنيف الأب غير صالح')
                 return redirect(url_for('store.new_category', store_id=store.id))
 
-        category = models.Category(name=name, parent_id=parent.id if parent else None, store_id=store.id)
+        category = Category(name=name, parent_id=parent.id if parent else None, store_id=store.id)
         db.session.add(category)
         db.session.commit()
         flash('تم إنشاء التصنيف')
         return redirect(url_for('store.store_categories', store_id=store.id))
 
-    parent_categories = models.Category.query.filter_by(store_id=store.id, parent_id=None).all()
+    parent_categories = Category.query.filter_by(store_id=store.id, parent_id=None).all()
     return render_template('store_owner/category_form.html', store=store, category=None, parent_categories=parent_categories)
 
 @store_bp.route('/store/<int:store_id>/categories/<int:category_id>/edit', methods=['GET', 'POST'])
@@ -55,7 +55,7 @@ def edit_category(store_id, category_id):
         return result[1]
     user, store = result
 
-    category = models.Category.query.get_or_404(category_id)
+    category = Category.query.get_or_404(category_id)
     if category.store_id != store.id:
         abort(403)
 
@@ -69,7 +69,7 @@ def edit_category(store_id, category_id):
 
         parent = None
         if parent_id:
-            parent = db.session.get(models.Category, int(parent_id))
+            parent = db.session.get(Category, int(parent_id))
             if not parent or parent.store_id != store.id:
                 flash('التصنيف الأب غير صالح')
                 return redirect(url_for('store.edit_category', store_id=store.id, category_id=category.id))
@@ -80,7 +80,7 @@ def edit_category(store_id, category_id):
         flash('تم حفظ التعديلات')
         return redirect(url_for('store.store_categories', store_id=store.id))
 
-    parent_categories = models.Category.query.filter_by(store_id=store.id, parent_id=None).all()
+    parent_categories = Category.query.filter_by(store_id=store.id, parent_id=None).all()
     return render_template('store_owner/category_form.html', store=store, category=category, parent_categories=parent_categories)
 
 @store_bp.route('/store/<int:store_id>/categories/<int:category_id>/delete', methods=['POST'])
@@ -91,15 +91,15 @@ def delete_category(store_id, category_id):
         return result[1]
     user, store = result
 
-    category = models.Category.query.get_or_404(category_id)
+    category = Category.query.get_or_404(category_id)
     if category.store_id != store.id:
         abort(403)
 
-    if models.Category.query.filter_by(parent_id=category.id).first():
+    if Category.query.filter_by(parent_id=category.id).first():
         flash('لا يمكن حذف هذا التصنيف لوجود تصنيفات فرعية مرتبطة به. احذف التصنيفات الفرعية أولاً.', 'error')
         return redirect(url_for('store.store_categories', store_id=store.id))
 
-    if models.Product.query.filter_by(category_id=category.id).first():
+    if Product.query.filter_by(category_id=category.id).first():
         flash('لا يمكن حذف التصنيف لوجود منتجات مرتبطة به')
         return redirect(url_for('store.store_categories', store_id=store.id))
 

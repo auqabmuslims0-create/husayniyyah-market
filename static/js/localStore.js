@@ -60,7 +60,6 @@ const LocalStore = (function() {
     }
 
     function updateThemeButton() {
-        // تحديث زر القائمة الجانبية
         const sidebarBtn = document.getElementById('sidebarThemeToggle');
         if (sidebarBtn) {
             const icon = sidebarBtn.querySelector('i');
@@ -78,7 +77,6 @@ const LocalStore = (function() {
             }
         }
 
-        // تحديث زر الشريط العلوي
         const topBtn = document.getElementById('topbarThemeToggle');
         if (topBtn) {
             const icon = topBtn.querySelector('i');

@@ -1,44 +1,37 @@
 from database import db
 from flask import url_for
-import models
+from models import User, Order, OrderItem, Product, Payment, OrderStatusHistory
+from shared.repositories.order_repository import OrderRepository
+from shared.repositories.product_repository import ProductRepository
+from shared.repositories.store_repository import StoreRepository
+from shared.services.notification_service import NotificationService
+from shared.services.payment_service import PaymentService
+from shared.utils import get_setting, is_store_active, is_store_open
+from shared.time_utils import current_time
 import random
-from time_utils import current_time
-from delivery_utils import is_delivery_available
-from services.notification_service import NotificationService
-from services.payment_service import PaymentService
-from utils import get_setting, is_store_active, is_store_open
 
 class OrderService:
     @staticmethod
     def generate_delivery_code():
-        """توليد رمز تسليم مكون من 6 أرقام."""
         return ''.join(random.choices('0123456789', k=6))
 
     @staticmethod
     def get_effective_price(product):
-        """إرجاع السعر الفعلي للمنتج مع مراعاة العروض."""
-        if product.is_offer and product.offer_price is not None:
-            return product.offer_price
-        return product.price
+        return product.offer_price if product.is_offer and product.offer_price is not None else product.price
 
     @staticmethod
     def _check_store_active(store):
-        """التحقق من أن المتجر نشط واشتراكه مدفوع وغير منتهي."""
         if not is_store_active(store):
             raise ValueError('هذا المتجر غير نشط حالياً ولا يمكن الطلب منه')
 
     @staticmethod
     def _check_store_open(store):
-        """التحقق من أن المتجر مفتوح الآن (اختياري)."""
         if store.working_hours and not is_store_open(store):
             raise ValueError('المتجر مغلق حالياً ولا يمكن الطلب منه')
 
     @staticmethod
     def create_order(user, store, cart_items=None, items_data=None, delivery_address=None,
                      latitude=None, longitude=None, payment_method='cash'):
-        """
-        إنشاء طلب جديد.
-        """
         if not user or not store:
             raise ValueError("بيانات الطلب غير مكتملة")
 
@@ -61,7 +54,7 @@ class OrderService:
                 qty = item.get('quantity', 1)
                 if not product_id or qty <= 0:
                     raise ValueError('بيانات المنتج غير صحيحة')
-                product = db.session.get(models.Product, product_id)
+                product = ProductRepository.get_by_id(product_id)
                 if not product:
                     raise ValueError(f'المنتج رقم {product_id} غير موجود')
                 if product.store_id != store.id:
@@ -84,21 +77,20 @@ class OrderService:
         if store.has_delivery and not delivery_address:
             raise ValueError("العنوان مطلوب لخدمة التوصيل")
 
-        order = models.Order(
-            customer_id=user.id,
-            store_id=store.id,
-            status='new',
-            total=grand_total,
-            delivery_fee=delivery_fee,
-            delivery_code=OrderService.generate_delivery_code(),
-            delivery_address=delivery_address if store.has_delivery else None,
-            latitude=latitude if store.has_delivery else None,
-            longitude=longitude if store.has_delivery else None,
-            is_cancelled=False,
-            payment_method=payment_method
-        )
-        db.session.add(order)
-        db.session.flush()
+        order = OrderRepository.create_order({
+            'customer_id': user.id,
+            'store_id': store.id,
+            'status': 'new',
+            'total': grand_total,
+            'delivery_fee': delivery_fee,
+            'delivery_code': OrderService.generate_delivery_code(),
+            'delivery_address': delivery_address if store.has_delivery else None,
+            'latitude': latitude if store.has_delivery else None,
+            'longitude': longitude if store.has_delivery else None,
+            'is_cancelled': False,
+            'payment_method': payment_method
+        })
+        db.session.flush()  # للحصول على order.id
 
         PaymentService.create_payment(
             user_id=user.id,
@@ -114,23 +106,21 @@ class OrderService:
         for product, qty in order_items:
             product.stock_quantity -= qty
             db.session.add(product)
-            order_item = models.OrderItem(
+            OrderRepository.add_item(
                 order_id=order.id,
                 product_id=product.id,
                 quantity=qty,
                 price=OrderService.get_effective_price(product),
                 options_selected=None
             )
-            db.session.add(order_item)
 
-        history = models.OrderStatusHistory(
+        OrderRepository.add_status_history(
             order_id=order.id,
             from_status=None,
             to_status='new',
             changed_by=user.id,
             note='إنشاء الطلب'
         )
-        db.session.add(history)
 
         NotificationService.send_to_store_owner(
             store,
@@ -161,16 +151,15 @@ class OrderService:
         from_status = order.status
         order.status = 'cancelled'
         order.is_cancelled = True
-        db.session.add(order)
+        OrderRepository.update_order(order)
 
-        history = models.OrderStatusHistory(
+        OrderRepository.add_status_history(
             order_id=order.id,
             from_status=from_status,
             to_status='cancelled',
             changed_by=user.id,
             note='إلغاء من قبل الزبون'
         )
-        db.session.add(history)
 
         if order.store:
             NotificationService.send_to_store_owner(
@@ -195,16 +184,15 @@ class OrderService:
 
         from_status = order.status
         order.status = 'delivering'
-        db.session.add(order)
+        OrderRepository.update_order(order)
 
-        history = models.OrderStatusHistory(
+        OrderRepository.add_status_history(
             order_id=order.id,
             from_status=from_status,
             to_status='delivering',
             changed_by=delivery_user.id,
             note='بدء التسليم من قبل المندوب'
         )
-        db.session.add(history)
 
         if order.store:
             NotificationService.send_to_store_owner(
@@ -232,16 +220,15 @@ class OrderService:
         from_status = order.status
         order.status = 'delivered'
         order.delivered_at = current_time()
-        db.session.add(order)
+        OrderRepository.update_order(order)
 
-        history = models.OrderStatusHistory(
+        OrderRepository.add_status_history(
             order_id=order.id,
             from_status=from_status,
             to_status='delivered',
             changed_by=delivery_user.id,
             note='تسليم ناجح'
         )
-        db.session.add(history)
 
         if order.store:
             NotificationService.send_to_store_owner(
@@ -258,7 +245,7 @@ class OrderService:
                 type_=NotificationService.TYPE_ORDER
             )
 
-        payments = models.Payment.query.filter_by(order_id=order.id).all()
+        payments = Payment.query.filter_by(order_id=order.id).all()
         for p in payments:
             if p.status == 'pending' and p.method == 'cash':
                 p.status = 'paid'
@@ -287,7 +274,7 @@ class OrderService:
             raise ValueError('يجب تعيين مندوب قبل بدء التسليم')
 
         if delivery_person_id:
-            person = db.session.get(models.User, delivery_person_id)
+            person = UserRepository.get_by_id(delivery_person_id)
             if not person:
                 raise ValueError('المندوب غير موجود')
             if person.role != 'delivery':
@@ -328,24 +315,23 @@ class OrderService:
             order.is_cancelled = True
         elif new_status == 'delivered':
             order.delivered_at = current_time()
-            payments = models.Payment.query.filter_by(order_id=order.id).all()
+            payments = Payment.query.filter_by(order_id=order.id).all()
             for p in payments:
                 if p.status == 'pending' and p.method == 'cash':
                     p.status = 'paid'
 
-        db.session.add(order)
+        OrderRepository.update_order(order)
 
-        history = models.OrderStatusHistory(
+        OrderRepository.add_status_history(
             order_id=order.id,
             from_status=from_status,
             to_status=new_status,
             changed_by=actor_id,
             note=note or f'تغيير الحالة إلى {new_status}'
         )
-        db.session.add(history)
 
         if order.customer_id:
-            customer = db.session.get(models.User, order.customer_id)
+            customer = UserRepository.get_by_id(order.customer_id)
             if customer:
                 NotificationService.send_to_user(
                     user_id=customer.id,

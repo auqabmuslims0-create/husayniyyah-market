@@ -1,9 +1,9 @@
 from flask import request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import db
-import models
-from utils import is_strong_password, is_valid_email, generate_public_id
-from shared.validators import is_valid_phone_syrian
+from models import User
+from shared.validators import is_strong_password, is_valid_email, is_valid_phone_syrian
+from shared.utils import generate_public_id
 from shared.security import record_login_attempt, get_login_attempts, clear_login_attempts
 from sqlalchemy import or_
 from . import api_bp
@@ -37,16 +37,16 @@ def register():
     if phone and not is_valid_phone_syrian(phone):
         return jsonify({'message': 'رقم الهاتف يجب أن يبدأ بـ 9 ويتكون من 9 أرقام'}), 400
 
-    if models.User.query.filter_by(username=username).first():
+    if User.query.filter_by(username=username).first():
         return jsonify({'message': 'اسم المستخدم موجود مسبقاً'}), 400
 
-    if models.User.query.filter_by(email=email).first():
+    if User.query.filter_by(email=email).first():
         return jsonify({'message': 'البريد الإلكتروني مستخدم بالفعل'}), 400
 
     full_phone = '+963' + phone if phone else ''
     public_id = generate_public_id()
 
-    user = models.User(
+    user = User(
         username=username,
         email=email,
         phone=full_phone,
@@ -87,8 +87,8 @@ def login():
     if get_login_attempts(ip) >= 5:
         return jsonify({'message': 'تم تجاوز عدد المحاولات المسموح، حاول بعد 5 دقائق'}), 429
 
-    user = models.User.query.filter(
-        or_(models.User.username == login_id, models.User.email == login_id)
+    user = User.query.filter(
+        or_(User.username == login_id, User.email == login_id)
     ).first()
 
     if user and check_password_hash(user.password_hash, password):
@@ -127,14 +127,14 @@ def update_me(current_user):
     if not is_valid_email(email):
         return jsonify({'message': 'البريد الإلكتروني غير صالح'}), 400
 
-    existing_username = models.User.query.filter(
-        models.User.username == username, models.User.id != current_user.id
+    existing_username = User.query.filter(
+        User.username == username, User.id != current_user.id
     ).first()
     if existing_username:
         return jsonify({'message': 'اسم المستخدم موجود مسبقاً'}), 400
 
-    existing_email = models.User.query.filter(
-        models.User.email == email, models.User.id != current_user.id
+    existing_email = User.query.filter(
+        User.email == email, User.id != current_user.id
     ).first()
     if existing_email:
         return jsonify({'message': 'البريد الإلكتروني مستخدم بالفعل'}), 400
@@ -205,7 +205,7 @@ def upload_avatar(current_user):
     file = request.files.get('avatar')
     if not file:
         return jsonify({'message': 'لم يتم إرسال ملف'}), 400
-    from utils import save_image
+    from shared.utils import save_image
     saved_name = save_image(file)
     if saved_name:
         current_user.avatar = saved_name
@@ -216,7 +216,7 @@ def upload_avatar(current_user):
 @api_bp.route('/me/delete', methods=['POST'])
 @token_required
 def delete_me(current_user):
-    from services.user_service import UserService
+    from shared.services.user_service import UserService
     try:
         success, msg = UserService.delete_user_fully(current_user.id)
         if not success:

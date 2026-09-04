@@ -4,9 +4,7 @@
 
 {% block head %}
 <style>
-    .services-page-title {
-        margin-bottom: 25px;
-    }
+    .services-page-title { margin-bottom: 25px; }
     .service-card {
         border-radius: var(--radius-lg);
         transition: transform var(--transition), box-shadow var(--transition);
@@ -34,30 +32,12 @@
         font-size: 2rem;
         margin: 0 auto;
     }
-    .bg-primary-subtle {
-        background-color: rgba(46,93,52,0.1) !important;
-        color: var(--primary) !important;
-    }
-    .bg-success-subtle {
-        background-color: rgba(25,135,84,0.1) !important;
-        color: #198754 !important;
-    }
-    .bg-warning-subtle {
-        background-color: rgba(255,193,7,0.1) !important;
-        color: #ffc107 !important;
-    }
-    body.dark-mode .bg-primary-subtle {
-        background-color: rgba(201,162,39,0.1) !important;
-        color: var(--accent) !important;
-    }
-    body.dark-mode .bg-success-subtle {
-        background-color: rgba(25,135,84,0.15) !important;
-        color: #4caf50 !important;
-    }
-    body.dark-mode .bg-warning-subtle {
-        background-color: rgba(255,193,7,0.15) !important;
-        color: #ffc107 !important;
-    }
+    .bg-primary-subtle { background-color: rgba(46,93,52,0.1) !important; color: var(--primary) !important; }
+    .bg-success-subtle { background-color: rgba(25,135,84,0.1) !important; color: #198754 !important; }
+    .bg-warning-subtle { background-color: rgba(255,193,7,0.1) !important; color: #ffc107 !important; }
+    body.dark-mode .bg-primary-subtle { background-color: rgba(201,162,39,0.1) !important; color: var(--accent) !important; }
+    body.dark-mode .bg-success-subtle { background-color: rgba(25,135,84,0.15) !important; color: #4caf50 !important; }
+    body.dark-mode .bg-warning-subtle { background-color: rgba(255,193,7,0.15) !important; color: #ffc107 !important; }
     .step-card {
         border-radius: var(--radius-md);
         transition: transform var(--transition), box-shadow var(--transition);
@@ -99,7 +79,6 @@
 <div class="container mt-4">
     <h4 class="services-page-title text-center"><i class="bi bi-gear"></i> الخدمات</h4>
 
-    <!-- بطاقات الخدمات -->
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="card p-4 text-center shadow-sm h-100 service-card">
@@ -133,7 +112,6 @@
         </div>
     </div>
 
-    <!-- كيف يعمل السوق؟ -->
     <h5 class="mb-3 text-center"><i class="bi bi-info-circle"></i> كيف يعمل السوق؟</h5>
     <div class="row g-3">
         <div class="col-md-4">

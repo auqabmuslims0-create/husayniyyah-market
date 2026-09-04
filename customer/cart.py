@@ -1,12 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort
 from sqlalchemy.orm import joinedload
 from database import db
-import models
-from time_utils import current_time
+from models import Product, CartItem, Store, Order, OrderItem, User
+from shared.time_utils import current_time
 from datetime import timedelta
-from utils import safe_redirect_target, is_store_active, get_setting
-from decorators import login_required
-from services.order_service import OrderService
+from shared.utils import safe_redirect_target, is_store_active, get_setting
+from shared.decorators import login_required
+from shared.services.order_service import OrderService
 
 cart_bp = Blueprint('cart', __name__)
 
@@ -21,7 +21,7 @@ def _merge_cart_with_db(user_id, session_cart):
     if not user_id:
         return session_cart
 
-    db_items = models.CartItem.query.filter_by(user_id=user_id).all()
+    db_items = CartItem.query.filter_by(user_id=user_id).all()
     db_cart = {str(item.product_id): item.quantity for item in db_items}
 
     for pid, qty in session_cart.items():
@@ -32,16 +32,16 @@ def _merge_cart_with_db(user_id, session_cart):
 
     for pid, qty in db_cart.items():
         product_id = int(pid)
-        product = db.session.get(models.Product, product_id)
+        product = db.session.get(Product, product_id)
         if not product:
             continue
-        existing = models.CartItem.query.filter_by(
+        existing = CartItem.query.filter_by(
             user_id=user_id, product_id=product_id
         ).first()
         if existing:
             existing.quantity = min(qty, product.stock_quantity)
         else:
-            db.session.add(models.CartItem(
+            db.session.add(CartItem(
                 user_id=user_id,
                 product_id=product_id,
                 store_id=product.store_id,
@@ -49,7 +49,7 @@ def _merge_cart_with_db(user_id, session_cart):
             ))
     db.session.commit()
 
-    updated_cart = {str(item.product_id): item.quantity for item in models.CartItem.query.filter_by(user_id=user_id).all()}
+    updated_cart = {str(item.product_id): item.quantity for item in CartItem.query.filter_by(user_id=user_id).all()}
     session['cart'] = updated_cart
     return updated_cart
 
@@ -68,8 +68,8 @@ def cart():
 
     if cart:
         product_ids = [int(pid) for pid in cart.keys()]
-        products = models.Product.query.filter(models.Product.id.in_(product_ids)).options(
-            joinedload(models.Product.store)
+        products = Product.query.filter(Product.id.in_(product_ids)).options(
+            joinedload(Product.store)
         ).all()
         product_map = {p.id: p for p in products}
 
@@ -88,14 +88,14 @@ def cart():
 
     orders = []
     if 'user_id' in session:
-        user = db.session.get(models.User, session['user_id'])
+        user = db.session.get(User, session['user_id'])
         if user:
             cutoff = current_time() - timedelta(hours=24)
-            all_orders = models.Order.query.filter_by(customer_id=user.id).options(
-                joinedload(models.Order.store),
-                joinedload(models.Order.items).joinedload(models.OrderItem.product),
-                joinedload(models.Order.delivery_person)
-            ).order_by(models.Order.created_at.desc()).all()
+            all_orders = Order.query.filter_by(customer_id=user.id).options(
+                joinedload(Order.store),
+                joinedload(Order.items).joinedload(OrderItem.product),
+                joinedload(Order.delivery_person)
+            ).order_by(Order.created_at.desc()).all()
 
             for order in all_orders:
                 if order.status == 'delivered':
@@ -122,17 +122,17 @@ def sync_cart():
 
     if 'user_id' in session:
         user_id = session['user_id']
-        models.CartItem.query.filter_by(user_id=user_id).delete()
+        CartItem.query.filter_by(user_id=user_id).delete()
         for pid_str, qty in local_cart.items():
             try:
                 product_id = int(pid_str)
                 qty = int(qty)
                 if qty < 1:
                     continue
-                product = db.session.get(models.Product, product_id)
+                product = db.session.get(Product, product_id)
                 if not product:
                     continue
-                db.session.add(models.CartItem(
+                db.session.add(CartItem(
                     user_id=user_id,
                     product_id=product_id,
                     store_id=product.store_id,
@@ -141,7 +141,7 @@ def sync_cart():
             except (ValueError, TypeError):
                 continue
         db.session.commit()
-        session['cart'] = {str(item.product_id): item.quantity for item in models.CartItem.query.filter_by(user_id=user_id).all()}
+        session['cart'] = {str(item.product_id): item.quantity for item in CartItem.query.filter_by(user_id=user_id).all()}
         session.modified = True
     else:
         session['cart'] = {str(k): int(v) for k, v in local_cart.items() if int(v) > 0}
@@ -152,7 +152,7 @@ def sync_cart():
 
 @cart_bp.route('/cart/add/<int:product_id>', methods=['POST'])
 def add_to_cart(product_id):
-    product = models.Product.query.get_or_404(product_id)
+    product = Product.query.get_or_404(product_id)
     quantity = int(request.form.get('quantity', 1))
     if quantity < 1:
         quantity = 1
@@ -172,20 +172,20 @@ def add_to_cart(product_id):
 
     if 'user_id' in session:
         user_id = session['user_id']
-        existing = models.CartItem.query.filter_by(
+        existing = CartItem.query.filter_by(
             user_id=user_id, product_id=product_id
         ).first()
         if existing:
             existing.quantity = min(existing.quantity + quantity, product.stock_quantity)
         else:
-            db.session.add(models.CartItem(
+            db.session.add(CartItem(
                 user_id=user_id,
                 product_id=product_id,
                 store_id=product.store_id,
                 quantity=min(quantity, product.stock_quantity)
             ))
         db.session.commit()
-        db_items = models.CartItem.query.filter_by(user_id=user_id).all()
+        db_items = CartItem.query.filter_by(user_id=user_id).all()
         session['cart'] = {str(item.product_id): item.quantity for item in db_items}
 
     cart = _get_session_cart()
@@ -199,7 +199,7 @@ def add_to_cart(product_id):
 
 @cart_bp.route('/cart/update/<int:product_id>', methods=['POST'])
 def update_cart(product_id):
-    product = models.Product.query.get_or_404(product_id)
+    product = Product.query.get_or_404(product_id)
     action = request.form.get('action')
     cart = _get_session_cart()
     pid_str = str(product_id)
@@ -208,7 +208,7 @@ def update_cart(product_id):
     if action == 'remove':
         cart.pop(pid_str, None)
         if 'user_id' in session:
-            models.CartItem.query.filter_by(
+            CartItem.query.filter_by(
                 user_id=session['user_id'], product_id=product_id
             ).delete()
             db.session.commit()
@@ -217,14 +217,14 @@ def update_cart(product_id):
         if new_qty < 1:
             cart.pop(pid_str, None)
             if 'user_id' in session:
-                models.CartItem.query.filter_by(
+                CartItem.query.filter_by(
                     user_id=session['user_id'], product_id=product_id
                 ).delete()
                 db.session.commit()
         elif new_qty > product.stock_quantity:
             cart[pid_str] = product.stock_quantity
             if 'user_id' in session:
-                existing = models.CartItem.query.filter_by(
+                existing = CartItem.query.filter_by(
                     user_id=session['user_id'], product_id=product_id
                 ).first()
                 if existing:
@@ -238,13 +238,13 @@ def update_cart(product_id):
         else:
             cart[pid_str] = new_qty
             if 'user_id' in session:
-                existing = models.CartItem.query.filter_by(
+                existing = CartItem.query.filter_by(
                     user_id=session['user_id'], product_id=product_id
                 ).first()
                 if existing:
                     existing.quantity = new_qty
                 else:
-                    db.session.add(models.CartItem(
+                    db.session.add(CartItem(
                         user_id=session['user_id'],
                         product_id=product_id,
                         store_id=product.store_id,
@@ -268,7 +268,7 @@ def update_cart(product_id):
 def clear_cart():
     session.pop('cart', None)
     if 'user_id' in session:
-        models.CartItem.query.filter_by(user_id=session['user_id']).delete()
+        CartItem.query.filter_by(user_id=session['user_id']).delete()
         db.session.commit()
     flash('تم مسح السلة بالكامل', 'success')
     return redirect(url_for('cart.cart'))
@@ -279,11 +279,11 @@ def clear_store_cart(store_id):
     if not cart:
         return redirect(url_for('cart.cart'))
 
-    products = models.Product.query.filter(models.Product.store_id == store_id).all()
+    products = Product.query.filter(Product.store_id == store_id).all()
     for product in products:
         cart.pop(str(product.id), None)
         if 'user_id' in session:
-            models.CartItem.query.filter_by(
+            CartItem.query.filter_by(
                 user_id=session['user_id'], product_id=product.id
             ).delete()
     if 'user_id' in session:
@@ -296,7 +296,7 @@ def clear_store_cart(store_id):
 @cart_bp.route('/cart/checkout/<int:store_id>', methods=['GET'])
 @login_required
 def checkout(store_id):
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user or not user.is_active:
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
@@ -305,17 +305,17 @@ def checkout(store_id):
     if not cart:
         return redirect(url_for('cart.cart'))
 
-    store = models.Store.query.get_or_404(store_id)
+    store = Store.query.get_or_404(store_id)
 
     if not is_store_active(store):
         flash('هذا المتجر غير نشط حالياً ولا يمكن الطلب منه')
         return redirect(url_for('cart.cart'))
 
     product_ids = [int(pid) for pid in cart.keys()]
-    products = models.Product.query.filter(
-        models.Product.id.in_(product_ids),
-        models.Product.store_id == store.id
-    ).options(joinedload(models.Product.store)).all()
+    products = Product.query.filter(
+        Product.id.in_(product_ids),
+        Product.store_id == store.id
+    ).options(joinedload(Product.store)).all()
     product_map = {p.id: p for p in products}
 
     items = []
@@ -332,11 +332,10 @@ def checkout(store_id):
     delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
     grand_total = product_total + delivery_fee
 
-    # جلب جميع المتاجر النشطة ذات الإحداثيات لعرضها على الخريطة
-    all_stores = models.Store.query.filter(
-        models.Store.subscription_status == 'active',
-        models.Store.latitude.isnot(None),
-        models.Store.longitude.isnot(None)
+    all_stores = Store.query.filter(
+        Store.subscription_status == 'active',
+        Store.latitude.isnot(None),
+        Store.longitude.isnot(None)
     ).all()
 
     return render_template('customer/checkout.html',
@@ -350,14 +349,14 @@ def checkout(store_id):
 @cart_bp.route('/cart/checkout/<int:store_id>', methods=['POST'])
 @login_required
 def place_order(store_id):
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user or not user.is_active:
         if request.is_json:
             return jsonify({'message': 'الحساب محظور'}), 403
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
 
-    store = models.Store.query.get_or_404(store_id)
+    store = Store.query.get_or_404(store_id)
 
     if not is_store_active(store):
         if request.is_json:
@@ -365,7 +364,6 @@ def place_order(store_id):
         flash('هذا المتجر غير نشط حالياً ولا يمكن الطلب منه')
         return redirect(url_for('cart.cart'))
 
-    # دعم JSON للمزامنة من التطبيق
     if request.is_json:
         data = request.get_json(silent=True) or {}
         delivery_address = data.get('delivery_address', '').strip()
@@ -374,26 +372,24 @@ def place_order(store_id):
         items_data = data.get('items', [])
         if not items_data:
             return jsonify({'message': 'يجب توفير عناصر الطلب'}), 400
-        # تحويل items_data إلى cart_items
         cart_items = []
         for item in items_data:
             product_id = item.get('product_id')
             quantity = item.get('quantity', 1)
-            product = db.session.get(models.Product, product_id)
+            product = db.session.get(Product, product_id)
             if product and product.store_id == store.id:
                 cart_items.append({'product': product, 'quantity': quantity})
         if not cart_items:
             return jsonify({'message': 'لا توجد منتجات صالحة'}), 400
     else:
-        # الطريقة التقليدية من النموذج
         cart = _get_session_cart()
         if not cart:
             return redirect(url_for('cart.cart'))
 
         product_ids = [int(pid) for pid in cart.keys()]
-        products = models.Product.query.filter(
-            models.Product.id.in_(product_ids),
-            models.Product.store_id == store.id
+        products = Product.query.filter(
+            Product.id.in_(product_ids),
+            Product.store_id == store.id
         ).all()
         product_map = {p.id: p for p in products}
 
@@ -435,12 +431,11 @@ def place_order(store_id):
             payment_method=payment_method
         )
         if not request.is_json:
-            # تنظيف السلة للمسار التقليدي فقط
             cart = _get_session_cart()
             for item in cart_items:
                 cart.pop(str(item['product'].id), None)
                 if 'user_id' in session:
-                    models.CartItem.query.filter_by(
+                    CartItem.query.filter_by(
                         user_id=session['user_id'], product_id=item['product'].id
                     ).delete()
             if 'user_id' in session:
@@ -449,7 +444,6 @@ def place_order(store_id):
             flash('تم تقديم الطلب بنجاح')
             return redirect(url_for('cart.cart'))
         else:
-            # للـ JSON نعيد رسالة نجاح فقط
             return jsonify({'message': 'تم تقديم الطلب بنجاح'}), 201
     except ValueError as e:
         db.session.rollback()
@@ -467,12 +461,12 @@ def place_order(store_id):
 @cart_bp.route('/cart/buy/<int:product_id>', methods=['GET'])
 @login_required
 def buy_product(product_id):
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user or not user.is_active:
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
 
-    product = models.Product.query.get_or_404(product_id)
+    product = Product.query.get_or_404(product_id)
     store = product.store
     if not is_store_active(store):
         flash('هذا المتجر غير نشط حالياً ولا يمكن الطلب منه')
@@ -496,8 +490,8 @@ def buy_product(product_id):
 @login_required
 def cancel_order(order_id):
     user_id = session.get('user_id')
-    user = db.session.get(models.User, user_id)
-    order = models.Order.query.get_or_404(order_id)
+    user = db.session.get(User, user_id)
+    order = Order.query.get_or_404(order_id)
 
     try:
         OrderService.cancel_order(user, order)
@@ -515,9 +509,8 @@ def cancel_order(order_id):
 @cart_bp.route('/cart/order/<int:order_id>/delete', methods=['POST'])
 @login_required
 def delete_order(order_id):
-    """حذف طلب مسلّم أو ملغي نهائيًا من سجل المستخدم."""
-    user = db.session.get(models.User, session['user_id'])
-    order = models.Order.query.get_or_404(order_id)
+    user = db.session.get(User, session['user_id'])
+    order = Order.query.get_or_404(order_id)
 
     if order.customer_id != user.id:
         abort(403)
@@ -527,7 +520,7 @@ def delete_order(order_id):
         return redirect(url_for('cart.cart'))
 
     try:
-        models.Payment.query.filter_by(order_id=order.id).delete()
+        Payment.query.filter_by(order_id=order.id).delete()
         db.session.delete(order)
         db.session.commit()
         flash('تم حذف الطلب بنجاح', 'success')

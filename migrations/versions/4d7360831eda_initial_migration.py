@@ -1,8 +1,8 @@
-"""Initial migration
+"""initial migration
 
-Revision ID: 49c1415f308b
+Revision ID: 4d7360831eda
 Revises: 
-Create Date: 2026-09-01 18:09:01.797825
+Create Date: 2026-09-04 14:13:13.573255
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '49c1415f308b'
+revision = '4d7360831eda'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -96,6 +96,8 @@ def upgrade():
     sa.Column('icon', sa.String(length=50), nullable=True),
     sa.Column('is_global', sa.Boolean(), nullable=True),
     sa.Column('extra_data', sa.Text(), nullable=True),
+    sa.Column('entity_type', sa.String(length=50), nullable=True),
+    sa.Column('entity_id', sa.Integer(), nullable=True),
     sa.Column('read_at', sa.DateTime(), nullable=True),
     sa.Column('expires_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
@@ -103,7 +105,12 @@ def upgrade():
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('notifications', schema=None) as batch_op:
+        batch_op.create_index('ix_notification_entity', ['entity_type', 'entity_id'], unique=False)
+        batch_op.create_index('ix_notification_expires', ['expires_at'], unique=False)
         batch_op.create_index('ix_notification_user_read', ['user_id', 'is_read'], unique=False)
+        batch_op.create_index('ix_notification_user_type', ['user_id', 'type'], unique=False)
+        batch_op.create_index(batch_op.f('ix_notifications_entity_id'), ['entity_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_notifications_entity_type'), ['entity_type'], unique=False)
         batch_op.create_index(batch_op.f('ix_notifications_is_read'), ['is_read'], unique=False)
         batch_op.create_index(batch_op.f('ix_notifications_type'), ['type'], unique=False)
         batch_op.create_index(batch_op.f('ix_notifications_user_id'), ['user_id'], unique=False)
@@ -167,7 +174,7 @@ def upgrade():
     sa.Column('subscription_expiry', sa.DateTime(), nullable=True),
     sa.Column('pending_deletion_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.CheckConstraint("subscription_status IN ('pending', 'active', 'suspended', 'cancelled')", name='ck_store_subscription_status_valid'),
+    sa.CheckConstraint("subscription_status IN ('pending', 'active', 'suspended', 'cancelled', 'expired')", name='ck_store_subscription_status_valid'),
     sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -237,9 +244,14 @@ def upgrade():
     sa.Column('proof_image', sa.String(length=300), nullable=True),
     sa.Column('payment_method', sa.String(length=30), nullable=True),
     sa.Column('confirmation_code', sa.String(length=20), nullable=True),
+    sa.Column('confirmation_attempts', sa.Integer(), nullable=True),
+    sa.Column('confirmation_expiry', sa.DateTime(), nullable=True),
     sa.Column('expiry_notified', sa.Boolean(), nullable=True),
+    sa.Column('duration_days', sa.Integer(), nullable=True),
+    sa.Column('renewal_count', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.CheckConstraint("payment_method IN ('cash', 'wallet', 'bank_transfer', 'manual_delivery')", name='ck_subscription_payment_method_valid'),
-    sa.CheckConstraint("status IN ('pending', 'paid', 'cancelled', 'expired')", name='ck_subscription_status_valid'),
+    sa.CheckConstraint("status IN ('pending', 'paid', 'cancelled', 'expired', 'suspended')", name='ck_subscription_status_valid'),
     sa.CheckConstraint('(user_id IS NOT NULL) OR (store_id IS NOT NULL)', name='ck_subscription_user_or_store'),
     sa.CheckConstraint('amount >= 0', name='ck_subscription_amount_non_negative'),
     sa.ForeignKeyConstraint(['store_id'], ['stores.id'], ),
@@ -252,6 +264,22 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_subscriptions_status'), ['status'], unique=False)
         batch_op.create_index(batch_op.f('ix_subscriptions_store_id'), ['store_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_subscriptions_user_id'), ['user_id'], unique=False)
+
+    op.create_table('order_status_history',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('order_id', sa.Integer(), nullable=False),
+    sa.Column('from_status', sa.String(length=20), nullable=True),
+    sa.Column('to_status', sa.String(length=20), nullable=False),
+    sa.Column('changed_by', sa.Integer(), nullable=True),
+    sa.Column('note', sa.String(length=200), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['changed_by'], ['users.id'], ),
+    sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    with op.batch_alter_table('order_status_history', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_order_status_history_changed_by'), ['changed_by'], unique=False)
+        batch_op.create_index(batch_op.f('ix_order_status_history_order_id'), ['order_id'], unique=False)
 
     op.create_table('payments',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -407,6 +435,28 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_product_reactions_product_id'), ['product_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_product_reactions_user_id'), ['user_id'], unique=False)
 
+    op.create_table('reels',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('store_id', sa.Integer(), nullable=False),
+    sa.Column('product_id', sa.Integer(), nullable=True),
+    sa.Column('video_url', sa.String(length=300), nullable=False),
+    sa.Column('thumbnail_url', sa.String(length=300), nullable=True),
+    sa.Column('caption', sa.Text(), nullable=True),
+    sa.Column('views', sa.Integer(), nullable=True),
+    sa.Column('is_active', sa.Boolean(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['product_id'], ['products.id'], ),
+    sa.ForeignKeyConstraint(['store_id'], ['stores.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    with op.batch_alter_table('reels', schema=None) as batch_op:
+        batch_op.create_index('ix_reel_active_created', ['is_active', 'created_at'], unique=False)
+        batch_op.create_index('ix_reel_store_created', ['store_id', 'created_at'], unique=False)
+        batch_op.create_index(batch_op.f('ix_reels_created_at'), ['created_at'], unique=False)
+        batch_op.create_index(batch_op.f('ix_reels_is_active'), ['is_active'], unique=False)
+        batch_op.create_index(batch_op.f('ix_reels_product_id'), ['product_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_reels_store_id'), ['store_id'], unique=False)
+
     op.create_table('reviews',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -424,16 +474,65 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_reviews_product_id'), ['product_id'], unique=False)
         batch_op.create_index(batch_op.f('ix_reviews_user_id'), ['user_id'], unique=False)
 
+    op.create_table('reel_comments',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('reel_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('text', sa.Text(), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['reel_id'], ['reels.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    with op.batch_alter_table('reel_comments', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_reel_comments_reel_id'), ['reel_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_reel_comments_user_id'), ['user_id'], unique=False)
+
+    op.create_table('reel_reactions',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('reel_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('reaction_type', sa.String(length=20), nullable=False),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.CheckConstraint("reaction_type IN ('like', 'love', 'wow', 'sad', 'angry')", name='ck_reel_reaction_type_valid'),
+    sa.ForeignKeyConstraint(['reel_id'], ['reels.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('reel_id', 'user_id', name='uq_reel_user_reaction')
+    )
+    with op.batch_alter_table('reel_reactions', schema=None) as batch_op:
+        batch_op.create_index(batch_op.f('ix_reel_reactions_reel_id'), ['reel_id'], unique=False)
+        batch_op.create_index(batch_op.f('ix_reel_reactions_user_id'), ['user_id'], unique=False)
+
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
+    with op.batch_alter_table('reel_reactions', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_reel_reactions_user_id'))
+        batch_op.drop_index(batch_op.f('ix_reel_reactions_reel_id'))
+
+    op.drop_table('reel_reactions')
+    with op.batch_alter_table('reel_comments', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_reel_comments_user_id'))
+        batch_op.drop_index(batch_op.f('ix_reel_comments_reel_id'))
+
+    op.drop_table('reel_comments')
     with op.batch_alter_table('reviews', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_reviews_user_id'))
         batch_op.drop_index(batch_op.f('ix_reviews_product_id'))
 
     op.drop_table('reviews')
+    with op.batch_alter_table('reels', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_reels_store_id'))
+        batch_op.drop_index(batch_op.f('ix_reels_product_id'))
+        batch_op.drop_index(batch_op.f('ix_reels_is_active'))
+        batch_op.drop_index(batch_op.f('ix_reels_created_at'))
+        batch_op.drop_index('ix_reel_store_created')
+        batch_op.drop_index('ix_reel_active_created')
+
+    op.drop_table('reels')
     with op.batch_alter_table('product_reactions', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_product_reactions_user_id'))
         batch_op.drop_index(batch_op.f('ix_product_reactions_product_id'))
@@ -481,6 +580,11 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_payments_created_at'))
 
     op.drop_table('payments')
+    with op.batch_alter_table('order_status_history', schema=None) as batch_op:
+        batch_op.drop_index(batch_op.f('ix_order_status_history_order_id'))
+        batch_op.drop_index(batch_op.f('ix_order_status_history_changed_by'))
+
+    op.drop_table('order_status_history')
     with op.batch_alter_table('subscriptions', schema=None) as batch_op:
         batch_op.drop_index(batch_op.f('ix_subscriptions_user_id'))
         batch_op.drop_index(batch_op.f('ix_subscriptions_store_id'))
@@ -533,7 +637,12 @@ def downgrade():
         batch_op.drop_index(batch_op.f('ix_notifications_user_id'))
         batch_op.drop_index(batch_op.f('ix_notifications_type'))
         batch_op.drop_index(batch_op.f('ix_notifications_is_read'))
+        batch_op.drop_index(batch_op.f('ix_notifications_entity_type'))
+        batch_op.drop_index(batch_op.f('ix_notifications_entity_id'))
+        batch_op.drop_index('ix_notification_user_type')
         batch_op.drop_index('ix_notification_user_read')
+        batch_op.drop_index('ix_notification_expires')
+        batch_op.drop_index('ix_notification_entity')
 
     op.drop_table('notifications')
     with op.batch_alter_table('login_attempts', schema=None) as batch_op:

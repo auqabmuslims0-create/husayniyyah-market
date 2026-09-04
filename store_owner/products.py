@@ -1,10 +1,10 @@
 from flask import render_template, request, redirect, url_for, flash, abort
 from database import db
-import models
+from models import Product, Category, Reel
 import os
 from sqlalchemy.orm import joinedload
-from utils import is_store_active, save_image, save_video, get_upload_path, delete_cloudinary_file
-from decorators import role_required
+from shared.utils import is_store_active, save_image, save_video, delete_cloudinary_file
+from shared.decorators import role_required
 from . import store_bp
 from .common import check_store_access
 
@@ -19,14 +19,14 @@ def store_products(store_id):
     q = request.args.get('q', '').strip()
     category_id = request.args.get('category_id', type=int)
 
-    query = models.Product.query.filter_by(store_id=store.id).options(joinedload(models.Product.category))
+    query = Product.query.filter_by(store_id=store.id).options(joinedload(Product.category))
     if q:
-        query = query.filter(models.Product.name.ilike(f'%{q}%'))
+        query = query.filter(Product.name.ilike(f'%{q}%'))
     if category_id:
         query = query.filter_by(category_id=category_id)
 
-    products = query.order_by(models.Product.created_at.desc()).all()
-    categories = models.Category.query.filter_by(store_id=store.id).all()
+    products = query.order_by(Product.created_at.desc()).all()
+    categories = Category.query.filter_by(store_id=store.id).all()
     total_products_value = sum(p.price if p.price is not None else 0 for p in products)
 
     return render_template('store_owner/product_list.html',
@@ -73,12 +73,11 @@ def new_product(store_id):
 
         category = None
         if category_id:
-            category = db.session.get(models.Category, int(category_id))
+            category = db.session.get(Category, int(category_id))
             if not category or category.store_id != store.id:
                 flash('التصنيف غير صالح')
                 return redirect(url_for('store.new_product', store_id=store.id))
 
-        # حفظ الصورة الأساسية
         main_image = None
         main_file = request.files.get('main_image')
         if main_file and main_file.filename != '':
@@ -87,7 +86,6 @@ def new_product(store_id):
                 flash('صيغة الصورة الأساسية غير مدعومة أو الحجم كبير', 'error')
                 return redirect(url_for('store.new_product', store_id=store.id))
 
-        # حفظ الصور الفرعية (حتى 4)
         sub_images = []
         uploaded_files = request.files.getlist('sub_images')
         for file in uploaded_files:
@@ -98,7 +96,6 @@ def new_product(store_id):
                 if saved_name:
                     sub_images.append(saved_name)
 
-        # حفظ الفيديو
         video_file = request.files.get('video')
         video_filename = None
         if video_file and video_file.filename != '':
@@ -119,7 +116,7 @@ def new_product(store_id):
             original_price = None
             offer_description = ''
 
-        product = models.Product(
+        product = Product(
             store_id=store.id,
             name=name,
             product_code=product_code,
@@ -137,11 +134,10 @@ def new_product(store_id):
             options=options
         )
         db.session.add(product)
-        db.session.flush()  # للحصول على product.id قبل commit
+        db.session.flush()
 
-        # إنشاء سجل ريل تلقائيًا إذا كان هناك فيديو
         if video_filename:
-            reel = models.Reel(
+            reel = Reel(
                 store_id=store.id,
                 product_id=product.id,
                 video_url=video_filename,
@@ -156,7 +152,7 @@ def new_product(store_id):
         flash('تم إضافة المنتج')
         return redirect(url_for('store.store_products', store_id=store.id))
 
-    categories = models.Category.query.filter_by(store_id=store.id).all()
+    categories = Category.query.filter_by(store_id=store.id).all()
     return render_template('store_owner/product_form.html', store=store, product=None, categories=categories)
 
 @store_bp.route('/store/<int:store_id>/products/<int:product_id>/edit', methods=['GET', 'POST'])
@@ -167,7 +163,7 @@ def edit_product(store_id, product_id):
         return result[1]
     user, store = result
 
-    product = models.Product.query.get_or_404(product_id)
+    product = Product.query.get_or_404(product_id)
     if product.store_id != store.id:
         abort(403)
 
@@ -195,12 +191,11 @@ def edit_product(store_id, product_id):
 
         category = None
         if category_id:
-            category = db.session.get(models.Category, int(category_id))
+            category = db.session.get(Category, int(category_id))
             if not category or category.store_id != store.id:
                 flash('التصنيف غير صالح')
                 return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
 
-        # الصورة الأساسية
         main_file = request.files.get('main_image')
         if main_file and main_file.filename != '':
             old_url = product.main_image
@@ -211,13 +206,11 @@ def edit_product(store_id, product_id):
                 flash('فشل رفع الصورة الأساسية', 'error')
                 return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
 
-        # حذف الصورة الأساسية إذا طُلب
         if request.form.get('remove_main_image') == 'yes':
             if product.main_image:
                 delete_cloudinary_file(product.main_image)
                 product.main_image = None
 
-        # الصور الفرعية
         existing_sub = []
         if product.sub_images:
             existing_sub = [img.strip() for img in product.sub_images.split(',') if img.strip()]
@@ -239,14 +232,12 @@ def edit_product(store_id, product_id):
 
         product.sub_images = ','.join(existing_sub) if existing_sub else None
 
-        # الفيديو
         new_video_saved = False
         if request.form.get('remove_video') == 'yes':
             if product.video:
                 delete_cloudinary_file(product.video)
                 product.video = None
-                # حذف سجل الريلز المرتبط إذا تم حذف الفيديو
-                existing_reel = models.Reel.query.filter_by(product_id=product.id).first()
+                existing_reel = Reel.query.filter_by(product_id=product.id).first()
                 if existing_reel:
                     db.session.delete(existing_reel)
         else:
@@ -286,22 +277,19 @@ def edit_product(store_id, product_id):
         product.original_price = original_price if is_offer else None
         product.offer_description = offer_description if is_offer else ''
 
-        db.session.flush()  # تأكد من تحديث المنتج
+        db.session.flush()
 
-        # مزامنة الريلز بعد تعديل المنتج
         if product.video:
-            existing_reel = models.Reel.query.filter_by(product_id=product.id).first()
+            existing_reel = Reel.query.filter_by(product_id=product.id).first()
             if existing_reel:
-                # تحديث بيانات الريلز لتطابق المنتج
                 existing_reel.video_url = product.video
                 existing_reel.thumbnail_url = product.main_image if product.main_image else None
                 existing_reel.caption = product.name
                 existing_reel.is_active = True
                 if new_video_saved:
-                    existing_reel.views = 0  # إعادة تعيين العداد عند تغيير الفيديو
+                    existing_reel.views = 0
             else:
-                # إنشاء ريل جديد إذا لم يكن موجودًا
-                reel = models.Reel(
+                reel = Reel(
                     store_id=store.id,
                     product_id=product.id,
                     video_url=product.video,
@@ -312,8 +300,7 @@ def edit_product(store_id, product_id):
                 )
                 db.session.add(reel)
         else:
-            # إذا انتهى الفيديو، تأكد من حذف الريلز
-            existing_reel = models.Reel.query.filter_by(product_id=product.id).first()
+            existing_reel = Reel.query.filter_by(product_id=product.id).first()
             if existing_reel:
                 db.session.delete(existing_reel)
 
@@ -321,7 +308,7 @@ def edit_product(store_id, product_id):
         flash('تم حفظ تعديلات المنتج')
         return redirect(url_for('store.store_products', store_id=store.id))
 
-    categories = models.Category.query.filter_by(store_id=store.id).all()
+    categories = Category.query.filter_by(store_id=store.id).all()
     return render_template('store_owner/product_form.html', store=store, product=product, categories=categories)
 
 @store_bp.route('/store/<int:store_id>/products/<int:product_id>/delete', methods=['POST'])
@@ -332,11 +319,10 @@ def delete_product(store_id, product_id):
         return result[1]
     user, store = result
 
-    product = models.Product.query.get_or_404(product_id)
+    product = Product.query.get_or_404(product_id)
     if product.store_id != store.id:
         abort(403)
 
-    # حذف الملفات من Cloudinary
     if product.main_image:
         delete_cloudinary_file(product.main_image)
     if product.sub_images:
@@ -347,8 +333,7 @@ def delete_product(store_id, product_id):
     if product.video:
         delete_cloudinary_file(product.video)
 
-    # حذف سجل الريلز المرتبط إذا وجد
-    existing_reel = models.Reel.query.filter_by(product_id=product.id).first()
+    existing_reel = Reel.query.filter_by(product_id=product.id).first()
     if existing_reel:
         db.session.delete(existing_reel)
 

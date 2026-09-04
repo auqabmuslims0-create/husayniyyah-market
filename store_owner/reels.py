@@ -1,8 +1,8 @@
 from flask import render_template, request, redirect, url_for, flash, abort
 from database import db
-import models
-from utils import is_store_active, save_video, save_image, delete_cloudinary_file
-from decorators import role_required
+from models import Reel, Product
+from shared.utils import is_store_active, save_video, save_image, delete_cloudinary_file
+from shared.decorators import role_required
 from . import store_bp
 from .common import check_store_access
 
@@ -14,7 +14,7 @@ def store_reels(store_id):
         return result[1]
     user, store = result
 
-    reels = models.Reel.query.filter_by(store_id=store.id).order_by(models.Reel.created_at.desc()).all()
+    reels = Reel.query.filter_by(store_id=store.id).order_by(Reel.created_at.desc()).all()
     return render_template('store_owner/reels.html', store=store, reels=reels)
 
 @store_bp.route('/store/<int:store_id>/reels/new', methods=['GET', 'POST'])
@@ -33,7 +33,7 @@ def new_reel(store_id):
         product_id = request.form.get('product_id')
         if product_id and product_id.strip():
             product_id = int(product_id)
-            product = models.Product.query.filter_by(id=product_id, store_id=store.id).first()
+            product = Product.query.filter_by(id=product_id, store_id=store.id).first()
             if not product:
                 flash('المنتج غير صالح')
                 return redirect(url_for('store.new_reel', store_id=store.id))
@@ -57,7 +57,7 @@ def new_reel(store_id):
         if thumbnail_file and thumbnail_file.filename != '':
             thumbnail_filename = save_image(thumbnail_file)
 
-        reel = models.Reel(
+        reel = Reel(
             store_id=store.id,
             product_id=product_id,
             video_url=video_filename,
@@ -71,7 +71,7 @@ def new_reel(store_id):
         flash('تم إضافة الريل بنجاح')
         return redirect(url_for('store.store_reels', store_id=store.id))
 
-    products = models.Product.query.filter_by(store_id=store.id).all()
+    products = Product.query.filter_by(store_id=store.id).all()
     return render_template('store_owner/reel_form.html', store=store, products=products)
 
 @store_bp.route('/store/<int:store_id>/reels/<int:reel_id>/delete', methods=['POST'])
@@ -82,7 +82,7 @@ def delete_reel(store_id, reel_id):
         return result[1]
     user, store = result
 
-    reel = models.Reel.query.get_or_404(reel_id)
+    reel = Reel.query.get_or_404(reel_id)
     if reel.store_id != store.id:
         abort(403)
 

@@ -2,9 +2,9 @@ from flask import render_template, request, redirect, url_for, flash, session
 from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 from database import db
-import models
-from services.order_service import OrderService
-from decorators import role_required
+from models import Order, OrderItem, Store, User
+from shared.services.order_service import OrderService
+from shared.decorators import role_required
 from . import admin_bp
 
 @admin_bp.route('/admin/orders')
@@ -15,29 +15,29 @@ def admin_orders():
     page = request.args.get('page', 1, type=int)
     per_page = 20
 
-    query = models.Order.query.options(
-        selectinload(models.Order.customer),
-        selectinload(models.Order.store),
-        selectinload(models.Order.items).selectinload(models.OrderItem.product),
-        selectinload(models.Order.delivery_person)
+    query = Order.query.options(
+        selectinload(Order.customer),
+        selectinload(Order.store),
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.delivery_person)
     )
 
     if q:
         if q.isdigit():
-            query = query.filter(models.Order.id == int(q))
+            query = query.filter(Order.id == int(q))
         else:
             query = query.filter(
                 or_(
-                    models.Order.customer.has(models.User.username.ilike(f'%{q}%')),
-                    models.Order.store.has(models.Store.name.ilike(f'%{q}%'))
+                    Order.customer.has(User.username.ilike(f'%{q}%')),
+                    Order.store.has(Store.name.ilike(f'%{q}%'))
                 )
             )
 
     allowed_statuses = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']
     if status_filter in allowed_statuses:
-        query = query.filter(models.Order.status == status_filter)
+        query = query.filter(Order.status == status_filter)
 
-    pagination = query.order_by(models.Order.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    pagination = query.order_by(Order.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     orders = pagination.items
 
     grouped = {}
@@ -64,7 +64,7 @@ def admin_orders():
 @admin_bp.route('/admin/orders/<int:order_id>/status', methods=['POST'])
 @role_required('admin')
 def admin_update_order_status(order_id):
-    order = models.Order.query.get_or_404(order_id)
+    order = Order.query.get_or_404(order_id)
     new_status = request.form.get('status')
     allowed_statuses = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']
     if new_status not in allowed_statuses:

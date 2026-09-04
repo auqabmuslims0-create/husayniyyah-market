@@ -107,7 +107,6 @@
         background: #1e1e1e;
         color: #fff;
     }
-    /* نمط علامة المتجر على الخريطة */
     .store-marker-icon {
         width: 36px;
         height: 36px;
@@ -136,7 +135,6 @@
     <form method="POST" action="{{ url_for('cart.place_order', store_id=store.id) }}" id="checkoutForm">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="row g-4">
-            <!-- القسم الأيسر: المنتجات والخريطة -->
             <div class="col-md-8">
                 <div class="card mb-4">
                     <div class="card-header">
@@ -186,7 +184,6 @@
                     </div>
                 </div>
             </div>
-            <!-- القسم الأيمن: ملخص الطلب -->
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
@@ -216,7 +213,6 @@
     </form>
 </div>
 
-<!-- نافذة تأكيد رسوم التوصيل -->
 <div class="modal fade" id="deliveryFeeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -247,7 +243,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = "{{ csrf_token }}";
     const deliveryFee = parseFloat("{{ delivery_fee }}");
 
-    // تحديث الكمية
     async function updateQuantity(productId, newQty) {
         if (newQty < 1) return;
         try {
@@ -283,7 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    async function updateTotals() {
+    function updateTotals() {
         let newTotal = 0;
         document.querySelectorAll('.item-subtotal').forEach(span => {
             const text = span.textContent.replace(/[^\d.-]/g, '');
@@ -308,14 +303,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // الخريطة
     {% if store.has_delivery %}
     const map = L.map('checkoutMap').setView([35.0, 36.5], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    // إضافة علامات المتاجر
     {% for s in all_stores %}
         {% if s.latitude and s.longitude %}
         L.marker([{{ s.latitude }}, {{ s.longitude }}], {
@@ -367,7 +360,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     {% endif %}
 
-    // نافذة التأكيد
     const confirmBtn = document.getElementById('confirmOrderBtn');
     const agreeBtn = document.getElementById('agreeBtn');
     const modal = new bootstrap.Modal(document.getElementById('deliveryFeeModal'));
@@ -391,7 +383,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function saveOrderOffline() {
-        const form = document.getElementById('checkoutForm');
         const storeId = {{ store.id }};
         const items = [];
         document.querySelectorAll('.quantity-card').forEach(card => {

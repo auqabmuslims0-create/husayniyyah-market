@@ -1,24 +1,24 @@
 from flask import render_template, request, redirect, url_for, flash, abort
 from database import db
-import models
-from services.delivery_service import DeliveryService
+from models import User, Order
+from shared.services.delivery_service import DeliveryService
 from shared.validators import is_valid_email, is_strong_password, is_valid_phone_syrian
-from utils import generate_public_id
+from shared.utils import generate_public_id
 from werkzeug.security import generate_password_hash
-from decorators import role_required
+from shared.decorators import role_required
 from . import admin_bp
 
 @admin_bp.route('/admin/delivery_persons')
 @role_required('admin')
 def admin_delivery_persons():
-    persons = models.User.query.filter_by(role='delivery').order_by(models.User.username).all()
+    persons = User.query.filter_by(role='delivery').order_by(User.username).all()
 
     for person in persons:
         if not person.is_active:
             person.availability_label = 'محظور'
             person.availability_color = 'danger'
         else:
-            from time_utils import current_time
+            from shared.time_utils import current_time
             now_time = current_time().time()
             if person.shift_start_time and person.shift_end_time:
                 if person.shift_start_time < person.shift_end_time:
@@ -32,9 +32,9 @@ def admin_delivery_persons():
                 person.availability_label = 'خارج الوردية'
                 person.availability_color = 'secondary'
             else:
-                active_count = models.Order.query.filter(
-                    models.Order.delivery_person_id == person.id,
-                    models.Order.status.in_(['ready', 'delivering'])
+                active_count = Order.query.filter(
+                    Order.delivery_person_id == person.id,
+                    Order.status.in_(['ready', 'delivering'])
                 ).count()
                 max_orders = person.max_active_orders if person.max_active_orders and person.max_active_orders > 0 else 0
                 if max_orders == 0 or active_count >= max_orders:
@@ -49,7 +49,7 @@ def admin_delivery_persons():
 @admin_bp.route('/admin/delivery_persons/<int:user_id>/shift', methods=['GET', 'POST'])
 @role_required('admin')
 def admin_delivery_shift_edit(user_id):
-    person = models.User.query.get_or_404(user_id)
+    person = User.query.get_or_404(user_id)
     if person.role != 'delivery':
         abort(403)
 
@@ -77,11 +77,11 @@ def admin_delivery_person_new():
             flash('اسم المستخدم والبريد وكلمة المرور مطلوبة', 'error')
             return redirect(url_for('admin.admin_delivery_person_new'))
 
-        if models.User.query.filter_by(username=username).first():
+        if User.query.filter_by(username=username).first():
             flash('اسم المستخدم موجود مسبقاً', 'error')
             return redirect(url_for('admin.admin_delivery_person_new'))
 
-        if models.User.query.filter_by(email=email).first():
+        if User.query.filter_by(email=email).first():
             flash('البريد الإلكتروني مستخدم بالفعل', 'error')
             return redirect(url_for('admin.admin_delivery_person_new'))
 
@@ -101,7 +101,7 @@ def admin_delivery_person_new():
         full_phone = '+963' + phone if phone else ''
         public_id = generate_public_id()
 
-        delivery_user = models.User(
+        delivery_user = User(
             username=username,
             email=email,
             phone=full_phone,
@@ -125,7 +125,7 @@ def admin_delivery_person_new():
 @admin_bp.route('/admin/delivery_persons/<int:user_id>/edit', methods=['GET', 'POST'])
 @role_required('admin')
 def admin_delivery_person_edit(user_id):
-    person = models.User.query.get_or_404(user_id)
+    person = User.query.get_or_404(user_id)
     if person.role != 'delivery':
         abort(403)
 
@@ -139,12 +139,12 @@ def admin_delivery_person_edit(user_id):
             flash('اسم المستخدم والبريد مطلوبان', 'error')
             return redirect(url_for('admin.admin_delivery_person_edit', user_id=person.id))
 
-        existing_username = models.User.query.filter(models.User.username == username, models.User.id != person.id).first()
+        existing_username = User.query.filter(User.username == username, User.id != person.id).first()
         if existing_username:
             flash('اسم المستخدم موجود مسبقاً', 'error')
             return redirect(url_for('admin.admin_delivery_person_edit', user_id=person.id))
 
-        existing_email = models.User.query.filter(models.User.email == email, models.User.id != person.id).first()
+        existing_email = User.query.filter(User.email == email, User.id != person.id).first()
         if existing_email:
             flash('البريد الإلكتروني مستخدم بالفعل', 'error')
             return redirect(url_for('admin.admin_delivery_person_edit', user_id=person.id))

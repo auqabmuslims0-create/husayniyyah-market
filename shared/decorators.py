@@ -1,7 +1,7 @@
 from functools import wraps
 from flask import session, redirect, url_for, flash, abort, jsonify
 from database import db
-import models
+from models import User
 
 def login_required(f):
     """يتطلب تسجيل الدخول (لصفحات الويب)."""
@@ -10,7 +10,7 @@ def login_required(f):
         if 'user_id' not in session:
             flash('يجب تسجيل الدخول أولاً', 'error')
             return redirect(url_for('auth.login'))
-        user = db.session.get(models.User, session['user_id'])
+        user = db.session.get(User, session['user_id'])
         if not user or not user.is_active:
             session.clear()
             flash('الجلسة غير صالحة، يرجى تسجيل الدخول', 'error')
@@ -26,7 +26,7 @@ def role_required(*roles):
             if 'user_id' not in session:
                 flash('يجب تسجيل الدخول أولاً', 'error')
                 return redirect(url_for('auth.login'))
-            user = db.session.get(models.User, session['user_id'])
+            user = db.session.get(User, session['user_id'])
             if not user or not user.is_active or user.role not in roles:
                 abort(403)
             return f(*args, **kwargs)
@@ -39,7 +39,7 @@ def api_login_required(f):
     def wrapper(*args, **kwargs):
         if 'user_id' not in session:
             return jsonify({'status': 'error', 'message': 'يجب تسجيل الدخول'}), 401
-        user = db.session.get(models.User, session['user_id'])
+        user = db.session.get(User, session['user_id'])
         if not user or not user.is_active:
             return jsonify({'status': 'error', 'message': 'جلسة غير صالحة أو حساب موقوف'}), 401
         return f(*args, **kwargs)

@@ -129,7 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // عند عدم الاتصال، إخفاء عناصر الخادم وعرض المحلية
     if (!navigator.onLine) {
         document.querySelectorAll('.server-favs').forEach(el => el.style.display = 'none');
         const localFavContainer = document.getElementById('localFavoritesContainer');
@@ -172,7 +171,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!html) html = '<p class="text-muted">لا توجد عناصر مفضلة.</p>';
         localFavContainer.innerHTML = html;
 
-        // ربط أزرار الإزالة المحلية
         localFavContainer.querySelectorAll('.remove-favorite-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const type = this.dataset.type;

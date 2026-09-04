@@ -1,14 +1,14 @@
 from flask import request, jsonify
 from database import db
-import models
-from utils import save_image
+from models import Favorite, Notification, Product, Store
+from shared.utils import save_image
 from . import api_bp
 from .helpers import token_required, serialize_product, serialize_store, serialize_notification
 
 @api_bp.route('/favorites', methods=['GET'])
 @token_required
 def get_favorites(current_user):
-    favs = models.Favorite.query.filter_by(user_id=current_user.id).all()
+    favs = Favorite.query.filter_by(user_id=current_user.id).all()
     favorites_data = []
     for fav in favs:
         item = {
@@ -39,8 +39,8 @@ def toggle_favorite(current_user):
 
     try:
         if fav_type == 'product':
-            product = models.Product.query.get_or_404(fav_id)
-            existing = models.Favorite.query.filter_by(
+            product = Product.query.get_or_404(fav_id)
+            existing = Favorite.query.filter_by(
                 user_id=current_user.id, product_id=product.id
             ).first()
             if existing:
@@ -48,13 +48,13 @@ def toggle_favorite(current_user):
                 db.session.commit()
                 return jsonify({'message': 'تمت إزالة المنتج من المفضلة', 'is_favorite': False}), 200
             else:
-                fav = models.Favorite(user_id=current_user.id, product_id=product.id)
+                fav = Favorite(user_id=current_user.id, product_id=product.id)
                 db.session.add(fav)
                 db.session.commit()
                 return jsonify({'message': 'تمت إضافة المنتج إلى المفضلة', 'is_favorite': True}), 200
         else:
-            store = models.Store.query.get_or_404(fav_id)
-            existing = models.Favorite.query.filter_by(
+            store = Store.query.get_or_404(fav_id)
+            existing = Favorite.query.filter_by(
                 user_id=current_user.id, store_id=store.id
             ).first()
             if existing:
@@ -62,7 +62,7 @@ def toggle_favorite(current_user):
                 db.session.commit()
                 return jsonify({'message': 'تمت إزالة المتجر من المفضلة', 'is_favorite': False}), 200
             else:
-                fav = models.Favorite(user_id=current_user.id, store_id=store.id)
+                fav = Favorite(user_id=current_user.id, store_id=store.id)
                 db.session.add(fav)
                 db.session.commit()
                 return jsonify({'message': 'تمت إضافة المتجر إلى المفضلة', 'is_favorite': True}), 200
@@ -73,13 +73,13 @@ def toggle_favorite(current_user):
 @api_bp.route('/notifications', methods=['GET'])
 @token_required
 def get_notifications(current_user):
-    notifs = models.Notification.query.filter_by(user_id=current_user.id).order_by(models.Notification.created_at.desc()).all()
+    notifs = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).all()
     return jsonify({'notifications': [serialize_notification(n) for n in notifs]}), 200
 
 @api_bp.route('/notifications/<int:notif_id>/read', methods=['POST'])
 @token_required
 def mark_notification_read(current_user, notif_id):
-    notif = models.Notification.query.get_or_404(notif_id)
+    notif = Notification.query.get_or_404(notif_id)
     if notif.user_id != current_user.id:
         return jsonify({'message': 'غير مسموح'}), 403
     notif.is_read = True

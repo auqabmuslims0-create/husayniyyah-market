@@ -4,8 +4,8 @@ from datetime import timedelta
 import jwt
 from database import db
 import models
-from utils import get_upload_path
-from time_utils import current_time
+from shared.utils import get_upload_path
+from shared.time_utils import current_time
 
 def encode_auth_token(user_id):
     """توليد JWT token."""
@@ -47,6 +47,8 @@ def get_image_url(filename):
     """تحويل اسم الملف إلى رابط كامل."""
     if not filename:
         return None
+    if filename.startswith('http'):
+        return filename
     if filename.startswith('uploads/'):
         return url_for('static', filename=filename, _external=True)
     return url_for('static', filename='uploads/' + filename, _external=True)

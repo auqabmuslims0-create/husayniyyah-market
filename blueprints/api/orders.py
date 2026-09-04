@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from database import db
-import models
-from services.order_service import OrderService
+from models import Order, Product
+from shared.services.order_service import OrderService
 from . import api_bp
 from .helpers import token_required, serialize_order
 
@@ -20,12 +20,11 @@ def create_order(current_user):
     if not items_data or not isinstance(items_data, list) or len(items_data) == 0:
         return jsonify({'message': 'يجب توفير عناصر الطلب'}), 400
 
-    # استنتاج المتجر من أول منتج
     store = None
     for item in items_data:
         product_id = item.get('product_id')
         if product_id:
-            product = db.session.get(models.Product, product_id)
+            product = db.session.get(Product, product_id)
             if product:
                 store = product.store
                 break
@@ -53,13 +52,13 @@ def create_order(current_user):
 @api_bp.route('/orders', methods=['GET'])
 @token_required
 def get_orders(current_user):
-    orders = models.Order.query.filter_by(customer_id=current_user.id).order_by(models.Order.created_at.desc()).all()
+    orders = Order.query.filter_by(customer_id=current_user.id).order_by(Order.created_at.desc()).all()
     return jsonify({'orders': [serialize_order(o) for o in orders]}), 200
 
 @api_bp.route('/orders/<int:order_id>', methods=['GET'])
 @token_required
 def get_order(current_user, order_id):
-    order = models.Order.query.get_or_404(order_id)
+    order = Order.query.get_or_404(order_id)
     if order.customer_id != current_user.id:
         return jsonify({'message': 'غير مسموح'}), 403
     return jsonify({'order': serialize_order(order)}), 200
@@ -67,7 +66,7 @@ def get_order(current_user, order_id):
 @api_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
 @token_required
 def cancel_order(current_user, order_id):
-    order = models.Order.query.get_or_404(order_id)
+    order = Order.query.get_or_404(order_id)
     try:
         OrderService.cancel_order(current_user, order)
         return jsonify({'message': 'تم إلغاء الطلب بنجاح', 'order': serialize_order(order)}), 200

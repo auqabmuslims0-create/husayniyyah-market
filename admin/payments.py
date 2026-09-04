@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash
-from services.payment_service import PaymentService
-from decorators import role_required
+from shared.services.payment_service import PaymentService
+from shared.decorators import role_required
 from . import admin_bp
 
 @admin_bp.route('/admin/payments')

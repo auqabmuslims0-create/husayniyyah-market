@@ -329,26 +329,171 @@
     var csrfToken = "{{ csrf_token }}";
     window.isAuthenticated = {{ 'true' if current_user else 'false' }};
 
+    // ====== دالة showToast محسّنة ======
     function showToast(message, type = 'info', image = null) {
-      if (type === 'danger') type = 'error';
       const container = document.getElementById('toastContainerTop');
       if (!container) return;
+
+      while (container.firstChild) {
+        const oldToast = container.firstChild;
+        if (oldToast.classList && oldToast.classList.contains('toast')) {
+          const bsToast = bootstrap.Toast.getInstance(oldToast);
+          if (bsToast) bsToast.dispose();
+        }
+        container.removeChild(oldToast);
+      }
+
+      if (type === 'danger') type = 'error';
       const toast = document.createElement('div');
       toast.className = 'toast align-items-center toast-modern border-0';
       toast.setAttribute('role', 'alert');
       toast.setAttribute('data-bs-delay', '4000');
       toast.setAttribute('data-bs-autohide', 'true');
+
+      let iconClass = '';
+      if (type === 'success') iconClass = 'bi-check-circle-fill text-success';
+      else if (type === 'error') iconClass = 'bi-exclamation-circle-fill text-danger';
+      else iconClass = 'bi-info-circle-fill text-info';
+
       let imageHtml = '';
       if (image) {
         imageHtml = `<img src="${image}" class="toast-image" alt="">`;
       }
-      toast.innerHTML = `<div class="d-flex"><div class="toast-body">${imageHtml}<span class="toast-message">${message}</span></div></div>`;
-      container.prepend(toast);
+
+      toast.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body">
+            ${imageHtml}
+            <i class="bi ${iconClass} toast-icon"></i>
+            <span class="toast-message">${message}</span>
+          </div>
+        </div>`;
+      container.appendChild(toast);
       const bsToast = new bootstrap.Toast(toast, { delay: 4000, autohide: true });
       bsToast.show();
-      toast.addEventListener('hidden.bs.toast', () => toast.remove());
+      toast.addEventListener('hidden.bs.toast', () => {
+        toast.remove();
+      });
     }
 
+    // ====== دوال النوافذ المنبثقة الموحدة ======
+    function showConfirmModal(message, callback) {
+      const modalEl = document.getElementById('confirmModal');
+      if (!modalEl) return;
+      document.getElementById('confirmModalMessage').textContent = message;
+      const btn = document.getElementById('confirmModalBtn');
+      btn.onclick = function() {
+        if (typeof callback === 'function') {
+          callback();
+        }
+        bootstrap.Modal.getInstance(modalEl).hide();
+      };
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function showConfirm(message) {
+      return new Promise((resolve) => {
+        const modalEl = document.getElementById('confirmModal');
+        if (!modalEl) {
+          resolve(false);
+          return;
+        }
+        document.getElementById('confirmModalMessage').textContent = message;
+        const btn = document.getElementById('confirmModalBtn');
+        const handleConfirm = () => {
+          cleanup();
+          resolve(true);
+          bootstrap.Modal.getInstance(modalEl).hide();
+        };
+        const handleCancel = () => {
+          cleanup();
+          resolve(false);
+          bootstrap.Modal.getInstance(modalEl).hide();
+        };
+        function cleanup() {
+          btn.removeEventListener('click', handleConfirm);
+          modalEl.removeEventListener('hidden.bs.modal', handleCancel);
+        }
+        btn.addEventListener('click', handleConfirm);
+        modalEl.addEventListener('hidden.bs.modal', handleCancel, { once: true });
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      });
+    }
+
+    function showAlert(message) {
+      const modalEl = document.getElementById('alertModal');
+      if (!modalEl) return;
+      document.getElementById('alertModalMessage').textContent = message;
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function showPrompt(message, defaultValue = '') {
+      return new Promise((resolve) => {
+        const modalEl = document.getElementById('promptModal');
+        if (!modalEl) {
+          resolve(null);
+          return;
+        }
+        document.getElementById('promptModalMessage').textContent = message;
+        const input = document.getElementById('promptInput');
+        input.value = defaultValue || '';
+        const btn = document.getElementById('promptModalBtn');
+        const handleConfirm = () => {
+          cleanup();
+          resolve(input.value);
+          bootstrap.Modal.getInstance(modalEl).hide();
+        };
+        const handleCancel = () => {
+          cleanup();
+          resolve(null);
+          bootstrap.Modal.getInstance(modalEl).hide();
+        };
+        function cleanup() {
+          btn.removeEventListener('click', handleConfirm);
+          modalEl.removeEventListener('hidden.bs.modal', handleCancel);
+        }
+        btn.addEventListener('click', handleConfirm);
+        modalEl.addEventListener('hidden.bs.modal', handleCancel, { once: true });
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      });
+    }
+
+    // ====== نافذة شرح طلب الإذن ======
+    function showPermissionModal(message, allowText = 'السماح', cancelText = 'إلغاء') {
+      return new Promise((resolve) => {
+        const modalEl = document.getElementById('permissionModal');
+        if (!modalEl) {
+          resolve(false);
+          return;
+        }
+        document.getElementById('permissionModalMessage').textContent = message;
+        const allowBtn = document.getElementById('permissionAllowBtn');
+        const cancelBtn = document.getElementById('permissionCancelBtn');
+        allowBtn.textContent = allowText;
+        cancelBtn.textContent = cancelText;
+        const handleAllow = () => {
+          cleanup();
+          resolve(true);
+          bootstrap.Modal.getInstance(modalEl).hide();
+        };
+        const handleCancel = () => {
+          cleanup();
+          resolve(false);
+          bootstrap.Modal.getInstance(modalEl).hide();
+        };
+        function cleanup() {
+          allowBtn.removeEventListener('click', handleAllow);
+          cancelBtn.removeEventListener('click', handleCancel);
+          modalEl.removeEventListener('hidden.bs.modal', handleCancel);
+        }
+        allowBtn.addEventListener('click', handleAllow);
+        cancelBtn.addEventListener('click', handleCancel);
+        modalEl.addEventListener('hidden.bs.modal', handleCancel, { once: true });
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      });
+    }
+
+    // ====== بقية الدوال ======
     function updateCartBadges(count) {
       LocalStore.updateCartBadges();
     }
@@ -418,7 +563,9 @@
         } else if (navigator.clipboard) {
             navigator.clipboard.writeText(url).then(() => showToast('تم نسخ الرابط', 'success'));
         } else {
-            prompt('انسخ الرابط:', url);
+            showPrompt('انسخ الرابط:', url).then(value => {
+                if (value) showToast('تم نسخ الرابط', 'success');
+            });
         }
     }
 
@@ -578,10 +725,6 @@
         try {
           const registration = await navigator.serviceWorker.register('/sw.js');
           console.log('Service Worker registered');
-          const existingSubscription = await registration.pushManager.getSubscription();
-          if (existingSubscription) {
-            console.log('Push subscription already exists');
-          }
         } catch (err) {
           console.error('Service Worker registration failed', err);
         }
@@ -599,35 +742,57 @@
       return outputArray;
     }
 
+    // تعديل دالة تفعيل الإشعارات الفورية
     window.enablePushNotifications = async function() {
       try {
-        const registration = await navigator.serviceWorker.ready;
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          const vapidResponse = await fetch('/api/notifications/push/vapid_public_key');
-          const vapidData = await vapidResponse.json();
-          const vapidPublicKey = vapidData.public_key;
-          const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
-          const subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: convertedVapidKey
-          });
-          await fetch('/api/notifications/push/subscribe', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-CSRF-Token': window.csrfToken
-            },
-            body: JSON.stringify({ subscription: subscription.toJSON() })
-          });
-          showToast('تم تفعيل الإشعارات بنجاح', 'success');
+        if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+          showToast('متصفحك لا يدعم الإشعارات الفورية', 'error');
+          return;
         }
+
+        // عرض نافذة مخصصة لشرح الإذن
+        const allowed = await showPermissionModal(
+          'نحتاج إذنك لإرسال إشعارات فورية عن الطلبات والمنتجات الجديدة والعروض.',
+          'السماح',
+          'إلغاء'
+        );
+        if (!allowed) {
+          showToast('تم إلغاء تفعيل الإشعارات', 'info');
+          return;
+        }
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          showToast('لم يتم منح الإذن للإشعارات', 'error');
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        const vapidResponse = await fetch('/api/notifications/push/vapid_public_key');
+        const vapidData = await vapidResponse.json();
+        const vapidPublicKey = vapidData.public_key;
+        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedVapidKey
+        });
+        await fetch('/api/notifications/push/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.csrfToken
+          },
+          body: JSON.stringify({ subscription: subscription.toJSON() })
+        });
+        showToast('تم تفعيل الإشعارات بنجاح', 'success');
       } catch (err) {
         console.error('Push subscription failed', err);
+        showToast('فشل تفعيل الإشعارات الفورية', 'error');
       }
     };
   </script>
 
+  <!-- نافذة التأكيد -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -646,21 +811,72 @@
     </div>
   </div>
 
+  <!-- نافذة تنبيه -->
+  <div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="alertModalTitle">تنبيه</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+        </div>
+        <div class="modal-body">
+          <p id="alertModalMessage"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">حسناً</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة إدخال نص (prompt) -->
+  <div class="modal fade" id="promptModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="promptModalTitle">إدخال</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+        </div>
+        <div class="modal-body">
+          <p id="promptModalMessage"></p>
+          <input type="text" class="form-control" id="promptInput" dir="rtl">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="button" class="btn btn-primary" id="promptModalBtn">موافق</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- نافذة طلب الإذن -->
+  <div class="modal fade" id="permissionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="permissionModalTitle">طلب إذن</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+        </div>
+        <div class="modal-body">
+          <p id="permissionModalMessage"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="permissionCancelBtn">إلغاء</button>
+          <button type="button" class="btn btn-primary" id="permissionAllowBtn">السماح</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    function showConfirmModal(message, formId) {
-      const modalEl = document.getElementById('confirmModal');
-      if (!modalEl) return;
-      document.getElementById('confirmModalMessage').textContent = message;
-      const btn = document.getElementById('confirmModalBtn');
-      btn.onclick = function() {
-        const form = document.getElementById(formId);
-        if (form) {
-          form.submit();
+    // إصلاح خلفية المودال
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('hidden.bs.modal', () => {
+        if (document.querySelector('.modal-backdrop')) {
+          document.querySelector('.modal-backdrop').remove();
         }
-        bootstrap.Modal.getInstance(modalEl).hide();
-      };
-      bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    }
+      });
+    });
   </script>
 
   {% block scripts %}{% endblock %}

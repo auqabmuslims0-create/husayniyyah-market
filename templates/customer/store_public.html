@@ -12,10 +12,8 @@
     .store-cover-placeholder { background: #e9ecef; color: #adb5bd; }
     body.dark-mode .store-cover { background: #2d2d2d; }
     body.dark-mode .store-cover-placeholder { background: #444; color: #ccc; }
-    .store-cover-img { display: block; }
     .owner-avatar-circle { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); background: #6c757d; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 32px; }
     body.dark-mode .owner-avatar-circle { border-color: #222; }
-    .store-cover img { border-radius: 20px 20px 0 0; }
     .featured-products-strip { scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
     .featured-products-strip::-webkit-scrollbar { height: 6px; }
     .featured-products-strip::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
@@ -26,7 +24,7 @@
     @media (max-width: 480px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
     .product-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-    /* أنماط قسم الفيديوهات بأسلوب الريلز */
+    /* أنماط الريلز */
     .reels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px; }
     .reel-slide { position: relative; width: 100%; border-radius: 20px; overflow: hidden; background: #000; box-shadow: 0 8px 20px rgba(0,0,0,0.2); line-height: 0; }
     .reel-video-wrapper { position: relative; width: 100%; line-height: 0; }
@@ -52,92 +50,28 @@
     @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
     .store-map-mini { height: 200px; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm); z-index: 0; }
 
-    /* تنسيق قسم عدم الاتصال */
+    /* أنماط عدم الاتصال */
     #offlineContent { display: none; }
-    .offline-store-card {
-        background: #fff;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        padding: 20px;
-        margin-top: 15px;
-    }
-    body.dark-mode .offline-store-card {
-        background: #1e1e1e;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    .offline-store-logo {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        object-fit: cover;
-        display: block;
-        margin: 0 auto 15px;
-        background: #f0f0f0;
-        border: 3px solid #e0e0e0;
-    }
-    .offline-store-name {
-        font-size: 1.5rem;
-        font-weight: 700;
-        text-align: center;
-        margin-bottom: 10px;
-    }
-    .offline-store-desc {
-        text-align: center;
-        color: #6c757d;
-        margin-bottom: 15px;
-    }
-    .offline-product-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-        margin-top: 15px;
-    }
-    .offline-product-item {
-        background: #f8f9fa;
-        border-radius: 15px;
-        overflow: hidden;
-        text-decoration: none;
-        color: inherit;
-    }
-    body.dark-mode .offline-product-item {
-        background: #2d2d2d;
-    }
-    .offline-product-image {
-        width: 100%;
-        height: 120px;
-        object-fit: cover;
-        display: block;
-        background: #f0f0f0;
-    }
-    .offline-product-body {
-        padding: 8px;
-        text-align: center;
-    }
-    .offline-product-name {
-        font-weight: 600;
-        font-size: 0.85rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .offline-product-price {
-        color: var(--primary);
-        font-weight: bold;
-        font-size: 0.9rem;
-    }
-    body.dark-mode .offline-product-price {
-        color: var(--accent);
-    }
+    .offline-store-card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 20px; margin-top: 15px; }
+    body.dark-mode .offline-store-card { background: #1e1e1e; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .offline-store-logo { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 15px; background: #f0f0f0; border: 3px solid #e0e0e0; }
+    .offline-store-name { font-size: 1.5rem; font-weight: 700; text-align: center; margin-bottom: 10px; }
+    .offline-store-desc { text-align: center; color: #6c757d; margin-bottom: 15px; }
+    .offline-product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
+    .offline-product-item { background: #f8f9fa; border-radius: 15px; overflow: hidden; text-decoration: none; color: inherit; }
+    body.dark-mode .offline-product-item { background: #2d2d2d; }
+    .offline-product-image { width: 100%; height: 120px; object-fit: cover; display: block; background: #f0f0f0; }
+    .offline-product-body { padding: 8px; text-align: center; }
+    .offline-product-name { font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .offline-product-price { color: var(--primary); font-weight: bold; font-size: 0.9rem; }
+    body.dark-mode .offline-product-price { color: var(--accent); }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <!-- المحتوى العادي (عند الاتصال) -->
     <div id="onlineContent">
         <div class="card shadow-sm store-profile-card">
-            <!-- الغلاف -->
             <div class="store-cover position-relative">
                 {% if store.logo_url %}
                     <img src="{{ store.logo_url | get_image_url }}" alt="{{ store.name }}" class="store-cover-img" loading="lazy">
@@ -146,31 +80,44 @@
                 {% endif %}
                 <form action="{{ url_for('account.toggle_favorite_store', store_id=store.id) }}" method="post" class="position-absolute top-0 start-0 m-2">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-sm {% if is_favorite %}btn-danger{% else %}btn-light{% endif %} shadow-sm"><i class="bi {{ 'bi-heart-fill' if is_favorite else 'bi-heart' }}"></i> {{ 'إزالة من المفضلة' if is_favorite else 'إضافة إلى المفضلة' }}</button>
+                    <button type="submit" class="btn btn-sm {% if is_favorite %}btn-danger{% else %}btn-light{% endif %} shadow-sm">
+                        <i class="bi {{ 'bi-heart-fill' if is_favorite else 'bi-heart' }}"></i> {{ 'إزالة من المفضلة' if is_favorite else 'إضافة إلى المفضلة' }}
+                    </button>
                 </form>
                 <div class="position-absolute bottom-0 end-0 m-2">
-                    {% if open_status %}<span class="badge bg-success fs-6 shadow-sm"><i class="bi bi-unlock"></i> مفتوح الآن</span>
-                    {% else %}<span class="badge bg-secondary fs-6 shadow-sm"><i class="bi bi-lock"></i> مغلق</span>{% endif %}
+                    {% if open_status %}
+                        <span class="badge bg-success fs-6 shadow-sm"><i class="bi bi-unlock"></i> مفتوح الآن</span>
+                    {% else %}
+                        <span class="badge bg-secondary fs-6 shadow-sm"><i class="bi bi-lock"></i> مغلق</span>
+                    {% endif %}
                 </div>
                 <div class="position-absolute bottom-0 start-0 translate-middle-y ms-4">
-                    {% if store.owner and store.owner.avatar %}<img src="{{ store.owner.avatar | get_image_url }}" alt="{{ store.owner.username }}" class="owner-avatar-circle">
-                    {% else %}<div class="owner-avatar-circle"><i class="bi bi-person"></i></div>{% endif %}
+                    {% if store.owner and store.owner.avatar %}
+                        <img src="{{ store.owner.avatar | get_image_url }}" alt="{{ store.owner.username }}" class="owner-avatar-circle">
+                    {% else %}
+                        <div class="owner-avatar-circle"><i class="bi bi-person"></i></div>
+                    {% endif %}
                 </div>
             </div>
 
-            <!-- الاسم والوصف وأزرار التواصل -->
             <div class="p-3 border-bottom">
                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
-                    <div><h1 class="h3 mb-1">{{ store.name }}</h1><p class="text-muted mb-2">{{ store.description or '' }}</p></div>
+                    <div>
+                        <h1 class="h3 mb-1">{{ store.name }}</h1>
+                        <p class="text-muted mb-2">{{ store.description or '' }}</p>
+                    </div>
                     <div class="d-flex gap-2 flex-wrap">
-                        {% if store.phone %}<a href="tel:{{ store.phone }}" class="btn btn-sm btn-outline-primary" title="اتصال"><i class="bi bi-telephone"></i> اتصال</a>{% endif %}
+                        {% if store.phone %}
+                            <a href="tel:{{ store.phone }}" class="btn btn-sm btn-outline-primary" title="اتصال"><i class="bi bi-telephone"></i> اتصال</a>
+                        {% endif %}
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyStoreLink()" title="نسخ الرابط"><i class="bi bi-link-45deg"></i> نسخ الرابط</button>
-                        {% if store.phone %}<a href="https://wa.me/{{ store.phone|replace('+','') }}" class="btn btn-sm btn-outline-success" target="_blank" title="واتساب"><i class="bi bi-whatsapp"></i> واتساب</a>{% endif %}
+                        {% if store.phone %}
+                            <a href="https://wa.me/{{ store.phone|replace('+','') }}" class="btn btn-sm btn-outline-success" target="_blank" title="واتساب"><i class="bi bi-whatsapp"></i> واتساب</a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
 
-            <!-- المنتجات المميزة -->
             {% if featured_products %}
             <div class="p-3 border-bottom">
                 <h5 class="mb-3"><i class="bi bi-star"></i> منتجات مميزة</h5>
@@ -182,7 +129,10 @@
                                 <div class="product-image-wrapper" style="height:120px; overflow:hidden;">
                                     {{ macros.render_image(product.images.split(',')[0] if product.images else '', product.name, 'w-100 h-100', 'bi-image', 'w-100 h-100') }}
                                 </div>
-                                <div class="card-body p-2"><p class="small mb-1 text-truncate">{{ product.name }}</p><p class="text-success fw-bold mb-0">{{ product.price|format_price }} ل.س</p></div>
+                                <div class="card-body p-2">
+                                    <p class="small mb-1 text-truncate">{{ product.name }}</p>
+                                    <p class="text-success fw-bold mb-0">{{ product.price|format_price }} ل.س</p>
+                                </div>
                             </div>
                         </a>
                     </div>
@@ -191,7 +141,6 @@
             </div>
             {% endif %}
 
-            <!-- التبويبات -->
             <ul class="nav nav-tabs tabs-scroll px-3 pt-3" id="storePublicTabs" role="tablist">
                 <li class="nav-item" role="presentation"><button class="nav-link active" id="products-tab-btn" data-bs-toggle="tab" data-bs-target="#products-tab" type="button" role="tab"><i class="bi bi-box-seam"></i> المنتجات</button></li>
                 <li class="nav-item" role="presentation"><button class="nav-link" id="videos-tab-btn" data-bs-toggle="tab" data-bs-target="#videos-tab" type="button" role="tab"><i class="bi bi-camera-video"></i> فيديوهات</button></li>
@@ -200,23 +149,33 @@
             </ul>
 
             <div class="tab-content p-3">
-                <!-- المنتجات -->
                 <div class="tab-pane fade show active" id="products-tab" role="tabpanel">
                     {% if products %}
                         <div class="products-grid">
-                            {% for product in products %}{{ macros.render_product_card(product, None, None, show_add_to_cart=True) }}{% endfor %}
+                            {% for product in products %}
+                                {{ macros.render_product_card(product, None, None, show_add_to_cart=True) }}
+                            {% endfor %}
                         </div>
                         {% if pagination.pages > 1 %}
-                        <nav class="mt-4"><ul class="pagination justify-content-center">
-                            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}"><a class="page-link" href="{{ url_for('stores.store_public', store_id=store.id, category_id=selected_category, page=pagination.prev_num) }}">السابق</a></li>
-                            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}{% if p %}<li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="{{ url_for('stores.store_public', store_id=store.id, category_id=selected_category, page=p) }}">{{ p }}</a></li>{% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}{% endfor %}
-                            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}"><a class="page-link" href="{{ url_for('stores.store_public', store_id=store.id, category_id=selected_category, page=pagination.next_num) }}">التالي</a></li>
-                        </ul></nav>
+                        <nav class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}"><a class="page-link" href="{{ url_for('stores.store_public', store_id=store.id, category_id=selected_category, page=pagination.prev_num) }}">السابق</a></li>
+                                {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                                    {% if p %}
+                                        <li class="page-item {% if p == pagination.page %}active{% endif %}"><a class="page-link" href="{{ url_for('stores.store_public', store_id=store.id, category_id=selected_category, page=p) }}">{{ p }}</a></li>
+                                    {% else %}
+                                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                                    {% endif %}
+                                {% endfor %}
+                                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}"><a class="page-link" href="{{ url_for('stores.store_public', store_id=store.id, category_id=selected_category, page=pagination.next_num) }}">التالي</a></li>
+                            </ul>
+                        </nav>
                         {% endif %}
-                    {% else %}<p class="text-muted text-center">لا توجد منتجات في هذا المتجر.</p>{% endif %}
+                    {% else %}
+                        <p class="text-muted text-center">لا توجد منتجات في هذا المتجر.</p>
+                    {% endif %}
                 </div>
 
-                <!-- الفيديوهات بأسلوب الريلز -->
                 <div class="tab-pane fade" id="videos-tab" role="tabpanel">
                     {% if store_videos %}
                         <div class="reels-grid">
@@ -228,12 +187,18 @@
                                            poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
                                            data-store-reel-video></video>
                                     <div class="video-loading-spinner" data-video-spinner></div>
-                                    <div class="reel-play-overlay" data-play-overlay><button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو"><i class="bi bi-play-fill"></i></button></div>
+                                    <div class="reel-play-overlay" data-play-overlay>
+                                        <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو"><i class="bi bi-play-fill"></i></button>
+                                    </div>
                                 </div>
                                 <div class="reel-content">
                                     <div class="reel-info-bottom">
                                         <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="reel-store-link">
-                                            {% if product.store.logo_url %}<img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ product.store.name }}">{% else %}<div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>{% endif %}
+                                            {% if product.store.logo_url %}
+                                                <img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ product.store.name }}">
+                                            {% else %}
+                                                <div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>
+                                            {% endif %}
                                         </a>
                                         <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
                                             <h5 class="reel-product-name">{{ product.name }}</h5>
@@ -248,23 +213,31 @@
                             </div>
                             {% endfor %}
                         </div>
-                    {% else %}<p class="text-muted text-center">لا توجد فيديوهات.</p>{% endif %}
+                    {% else %}
+                        <p class="text-muted text-center">لا توجد فيديوهات.</p>
+                    {% endif %}
                 </div>
 
-                <!-- التصنيفات -->
                 <div class="tab-pane fade" id="categories-tab" role="tabpanel">
                     {% if categories %}
                         {% for category in categories %}
                             <h6 class="fw-bold mt-3"><i class="bi bi-tag"></i> {{ category.name }}</h6>
                             {% set category_products = category.products %}
                             {% if category_products %}
-                                <div class="products-grid">{% for product in category_products[:4] %}{{ macros.render_product_card(product, None, None, show_add_to_cart=True) }}{% endfor %}</div>
-                            {% else %}<p class="text-muted small">لا توجد منتجات في هذا التصنيف.</p>{% endif %}
+                                <div class="products-grid">
+                                    {% for product in category_products[:4] %}
+                                        {{ macros.render_product_card(product, None, None, show_add_to_cart=True) }}
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="text-muted small">لا توجد منتجات في هذا التصنيف.</p>
+                            {% endif %}
                         {% endfor %}
-                    {% else %}<p class="text-muted text-center">لا توجد تصنيفات.</p>{% endif %}
+                    {% else %}
+                        <p class="text-muted text-center">لا توجد تصنيفات.</p>
+                    {% endif %}
                 </div>
 
-                <!-- حول المتجر -->
                 <div class="tab-pane fade" id="about-tab" role="tabpanel">
                     <div class="row">
                         <div class="col-md-6 mb-2"><p><strong><i class="bi bi-telephone"></i> الهاتف:</strong> {{ store.phone or 'غير محدد' }}</p></div>
@@ -282,7 +255,6 @@
         </div>
     </div>
 
-    <!-- محتوى عدم الاتصال -->
     <div id="offlineContent">
         <div class="alert alert-warning text-center">
             <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض نسخة محفوظة من المتجر
@@ -313,9 +285,15 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endif %}
-
 <script>
-function copyStoreLink() { const url = window.location.href; if (navigator.clipboard) { navigator.clipboard.writeText(url).then(() => showToast('تم نسخ رابط المتجر', 'success')).catch(() => prompt('انسخ الرابط:', url)); } else { prompt('انسخ الرابط:', url); } }
+function copyStoreLink() {
+    const url = window.location.href;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => showToast('تم نسخ رابط المتجر', 'success')).catch(() => prompt('انسخ الرابط:', url));
+    } else {
+        prompt('انسخ الرابط:', url);
+    }
+}
 
 document.addEventListener('click', function(e) {
     const playBtn = e.target.closest('[data-play-btn]');
@@ -351,7 +329,6 @@ document.getElementById('videos-tab-btn').addEventListener('hidden.bs.tab', func
     document.querySelectorAll('[data-store-reel-video]').forEach(video => { video.pause(); const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]'); if (overlay) overlay.classList.remove('hidden'); });
 });
 
-// حفظ المتجر والمنتجات في IndexedDB إذا كان متصلاً
 if (navigator.onLine && typeof OfflineDB !== 'undefined') {
     const storeData = {
         id: {{ store.id }},
@@ -366,7 +343,6 @@ if (navigator.onLine && typeof OfflineDB !== 'undefined') {
     };
     OfflineDB.saveStore(storeData).catch(err => console.warn(err));
 
-    // حفظ المنتجات
     const productsData = [
         {% for product in products %}
         {
@@ -389,7 +365,6 @@ if (navigator.onLine && typeof OfflineDB !== 'undefined') {
     }
 }
 
-// ==== التعامل مع وضع عدم الاتصال ====
 const onlineContent = document.getElementById('onlineContent');
 const offlineContent = document.getElementById('offlineContent');
 

@@ -36,22 +36,11 @@
         color: var(--primary);
         font-weight: 700;
     }
-    body.dark-mode .about-title {
-        color: var(--accent);
-    }
-    .about-lead {
-        color: #495057;
-    }
-    body.dark-mode .about-lead {
-        color: #adb5bd;
-    }
-    .about-text {
-        color: #6c757d;
-        line-height: 1.8;
-    }
-    body.dark-mode .about-text {
-        color: #adb5bd;
-    }
+    body.dark-mode .about-title { color: var(--accent); }
+    .about-lead { color: #495057; }
+    body.dark-mode .about-lead { color: #adb5bd; }
+    .about-text { color: #6c757d; line-height: 1.8; }
+    body.dark-mode .about-text { color: #adb5bd; }
     .service-card {
         border-radius: var(--radius-lg);
         transition: transform var(--transition), box-shadow var(--transition);
@@ -79,36 +68,17 @@
         font-size: 2rem;
         margin: 0 auto;
     }
-    .bg-primary-subtle {
-        background-color: rgba(46,93,52,0.1) !important;
-        color: var(--primary) !important;
-    }
-    .bg-success-subtle {
-        background-color: rgba(25,135,84,0.1) !important;
-        color: #198754 !important;
-    }
-    .bg-warning-subtle {
-        background-color: rgba(255,193,7,0.1) !important;
-        color: #ffc107 !important;
-    }
-    body.dark-mode .bg-primary-subtle {
-        background-color: rgba(201,162,39,0.1) !important;
-        color: var(--accent) !important;
-    }
-    body.dark-mode .bg-success-subtle {
-        background-color: rgba(25,135,84,0.15) !important;
-        color: #4caf50 !important;
-    }
-    body.dark-mode .bg-warning-subtle {
-        background-color: rgba(255,193,7,0.15) !important;
-        color: #ffc107 !important;
-    }
+    .bg-primary-subtle { background-color: rgba(46,93,52,0.1) !important; color: var(--primary) !important; }
+    .bg-success-subtle { background-color: rgba(25,135,84,0.1) !important; color: #198754 !important; }
+    .bg-warning-subtle { background-color: rgba(255,193,7,0.1) !important; color: #ffc107 !important; }
+    body.dark-mode .bg-primary-subtle { background-color: rgba(201,162,39,0.1) !important; color: var(--accent) !important; }
+    body.dark-mode .bg-success-subtle { background-color: rgba(25,135,84,0.15) !important; color: #4caf50 !important; }
+    body.dark-mode .bg-warning-subtle { background-color: rgba(255,193,7,0.15) !important; color: #ffc107 !important; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <!-- بطاقة رئيسية عن السوق -->
     <div class="card about-card p-4 mb-4 shadow-sm">
         <div class="about-icon-wrapper">
             <i class="bi bi-shop-window"></i>
@@ -126,7 +96,6 @@
         </p>
     </div>
 
-    <!-- بطاقات الخدمات -->
     <div class="row g-3">
         <div class="col-md-4">
             <div class="card p-4 text-center h-100 service-card">

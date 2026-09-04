@@ -1,13 +1,14 @@
 from flask import render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash
 from database import db
-import models
+from models import User, PasswordReset
+from shared.repositories.user_repository import UserRepository
 import secrets
 import hashlib
 from datetime import timedelta
 from shared.validators import is_strong_password
 from shared.security import record_reset_attempt, get_reset_attempts_by_email, get_reset_attempts_by_ip
-from time_utils import current_time
+from shared.time_utils import current_time
 from . import auth_bp
 
 @auth_bp.route('/forgot_password', methods=['GET', 'POST'])
@@ -26,7 +27,7 @@ def forgot_password():
             flash('تم تجاوز عدد محاولات استعادة كلمة المرور من هذا الجهاز، حاول بعد 15 دقيقة', 'error')
             return redirect(url_for('auth.forgot_password'))
 
-        user = models.User.query.filter_by(email=email).first()
+        user = UserRepository.get_by_email(email)
         if not user:
             record_reset_attempt(email, ip)
             flash('إذا كان البريد مسجلاً، فسيتم إرسال تعليمات استعادة كلمة المرور', 'info')
@@ -55,16 +56,16 @@ def confirm_identity():
             flash('جميع الحقول مطلوبة', 'error')
             return redirect(url_for('auth.confirm_identity'))
 
-        user = models.User.query.filter_by(email=email).first()
+        user = UserRepository.get_by_email(email)
         expected_phone = '+963' + phone if phone else ''
         if not user or user.username != username or user.phone != expected_phone or user.public_id != public_id or user.role != role:
             flash('بيانات الهوية غير صحيحة', 'error')
             return redirect(url_for('auth.confirm_identity'))
 
-        models.PasswordReset.query.filter_by(user_id=user.id).delete()
+        PasswordReset.query.filter_by(user_id=user.id).delete()
         token = secrets.token_hex(20)
         hashed_token = hashlib.sha256(token.encode()).hexdigest()
-        reset = models.PasswordReset(
+        reset = PasswordReset(
             user_id=user.id,
             token=hashed_token,
             expires_at=current_time() + timedelta(hours=1)
@@ -84,7 +85,7 @@ def reset_password(token=None):
     reset = None
     if token:
         hashed_token = hashlib.sha256(token.encode()).hexdigest()
-        reset = models.PasswordReset.query.filter_by(token=hashed_token).first()
+        reset = PasswordReset.query.filter_by(token=hashed_token).first()
         if not reset or reset.expires_at < current_time():
             flash('الرابط غير صالح أو منتهي', 'error')
             return redirect(url_for('auth.forgot_password'))
@@ -93,7 +94,7 @@ def reset_password(token=None):
         if not user_id:
             flash('جلسة استعادة غير صالحة', 'error')
             return redirect(url_for('auth.forgot_password'))
-        reset = models.PasswordReset.query.filter_by(user_id=user_id).order_by(models.PasswordReset.expires_at.desc()).first()
+        reset = PasswordReset.query.filter_by(user_id=user_id).order_by(PasswordReset.expires_at.desc()).first()
         if not reset or reset.expires_at < current_time():
             flash('انتهت صلاحية الجلسة، يرجى إعادة العملية', 'error')
             return redirect(url_for('auth.forgot_password'))
@@ -111,7 +112,7 @@ def reset_password(token=None):
             flash(msg, 'error')
             return redirect(url_for('auth.reset_password', token=token or ''))
 
-        user = db.session.get(models.User, reset.user_id)
+        user = db.session.get(User, reset.user_id)
         if not user:
             flash('المستخدم غير موجود', 'error')
             return redirect(url_for('auth.forgot_password'))

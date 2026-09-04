@@ -3,8 +3,8 @@ from flask import current_app
 from pywebpush import webpush, WebPushException
 from py_vapid import Vapid
 from database import db
-import models
-from utils import get_setting, set_setting
+from models import PushSubscription
+from shared.utils import get_setting, set_setting
 
 DEFAULT_VAPID_SUBJECT = "mailto:admin@example.com"
 
@@ -47,7 +47,7 @@ def send_web_push(subscription_info, payload):
         return False
 
 def send_to_user(user_id, notification):
-    subs = models.PushSubscription.query.filter_by(user_id=user_id).all()
+    subs = PushSubscription.query.filter_by(user_id=user_id).all()
     if not subs:
         return 0
 
@@ -92,13 +92,11 @@ def send_to_users(user_ids, notification):
 
 def cleanup_invalid_subscriptions():
     """حذف الاشتراكات غير الصالحة (تُستدعى دورياً)."""
-    subs = models.PushSubscription.query.all()
+    subs = PushSubscription.query.all()
     invalid_ids = []
     for sub in subs:
-        # يمكن التحقق عبر إرسال اختبار، لكن نكتفي بالتحقق من وجود endpoint
-        # يمكن استخدام طريقة أكثر دقة، لكن نكتفي بالحذف حسب endpoint فارغ أو تالف
         if not sub.endpoint.startswith('http'):
             invalid_ids.append(sub.id)
     if invalid_ids:
-        models.PushSubscription.query.filter(models.PushSubscription.id.in_(invalid_ids)).delete(synchronize_session=False)
+        PushSubscription.query.filter(PushSubscription.id.in_(invalid_ids)).delete(synchronize_session=False)
         db.session.commit()

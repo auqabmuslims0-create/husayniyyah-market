@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function pauseAllVideos() {
         videos.forEach(video => {
             video.pause();
-            const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
+            const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
             if (overlay) overlay.classList.remove('hidden');
         });
     }
@@ -13,17 +13,16 @@ document.addEventListener('DOMContentLoaded', function() {
     function playVideo(video) {
         pauseAllVideos();
         const slide = video.closest('.reel-slide');
+        if (!slide) return;
         const spinner = slide.querySelector('[data-video-spinner]');
-        // إظهار المؤشر إذا لم يكن الفيديو جاهزًا
-        if (video.readyState < 3) {
+        if (video.readyState < 3 && spinner) {
             spinner.classList.add('show');
         }
         video.muted = false;
         video.play().then(() => {
-            spinner.classList.remove('show');
+            if (spinner) spinner.classList.remove('show');
             const overlay = slide.querySelector('[data-play-overlay]');
             if (overlay) overlay.classList.add('hidden');
-            // تسجيل مشاهدة عند بدء التشغيل
             const reelId = slide.dataset.reelId;
             if (reelId && !slide.dataset.viewRecorded) {
                 fetch(`/api/reels/${reelId}/view`, { method: 'POST' })
@@ -31,14 +30,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     .catch(() => {});
             }
         }).catch(() => {
-            spinner.classList.remove('show');
+            if (spinner) spinner.classList.remove('show');
         });
     }
 
     document.querySelectorAll('[data-play-btn]').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            const video = this.closest('.reel-slide').querySelector('[data-reel-video]');
+            const video = this.closest('.reel-slide')?.querySelector('[data-reel-video]');
             if (video) playVideo(video);
         });
     });
@@ -49,30 +48,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 playVideo(video);
             } else {
                 video.pause();
-                const overlay = video.closest('.reel-slide').querySelector('[data-play-overlay]');
+                const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
                 if (overlay) overlay.classList.remove('hidden');
             }
         });
-        // إخفاء المؤشر عند جاهزية الفيديو
         video.addEventListener('canplaythrough', function() {
-            const spinner = video.closest('.reel-slide').querySelector('[data-video-spinner]');
+            const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
             if (spinner) spinner.classList.remove('show');
         });
         video.addEventListener('waiting', function() {
-            const spinner = video.closest('.reel-slide').querySelector('[data-video-spinner]');
+            const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
             if (spinner) spinner.classList.add('show');
         });
         video.addEventListener('playing', function() {
-            const spinner = video.closest('.reel-slide').querySelector('[data-video-spinner]');
+            const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
             if (spinner) spinner.classList.remove('show');
         });
     });
 
-    // تشغيل الفيديو تلقائيًا عندما يصبح مرئيًا
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             const video = entry.target;
             const slide = video.closest('.reel-slide');
+            if (!slide) return;
             const overlay = slide.querySelector('[data-play-overlay]');
             if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
                 playVideo(video);
@@ -88,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ========== دوال عامة للتفاعل والمشاركة ==========
 function toggleReelReaction(reelId, reactionType, button) {
-    // الحصول على CSRF token من meta tag أو من متغير عام
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     fetch(`/api/reels/${reelId}/reaction`, {
         method: 'POST',
@@ -99,13 +96,10 @@ function toggleReelReaction(reelId, reactionType, button) {
         body: JSON.stringify({ reaction_type: reactionType })
     })
     .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
+        if (!response.ok) throw new Error('Network response was not ok');
         return response.json();
     })
     .then(data => {
-        // تحديث الزر بصريًا (يمكن تحسينه لاحقًا)
         button.classList.toggle('active');
         const icon = button.querySelector('i');
         if (icon) {
@@ -115,9 +109,7 @@ function toggleReelReaction(reelId, reactionType, button) {
     })
     .catch(error => {
         console.error('Error:', error);
-        if (typeof showToast === 'function') {
-            showToast('حدث خطأ، حاول لاحقاً', 'error');
-        }
+        if (typeof showToast === 'function') showToast('حدث خطأ، حاول لاحقاً', 'error');
     });
 }
 
@@ -128,16 +120,11 @@ function shareReel(reelId, title) {
             url: `${window.location.origin}/reels#reel-${reelId}`
         }).catch(() => {});
     } else {
-        // fallback: نسخ الرابط
         const url = `${window.location.origin}/reels#reel-${reelId}`;
         navigator.clipboard.writeText(url).then(() => {
-            if (typeof showToast === 'function') {
-                showToast('تم نسخ الرابط', 'success');
-            }
+            if (typeof showToast === 'function') showToast('تم نسخ الرابط', 'success');
         }).catch(() => {
-            if (typeof showToast === 'function') {
-                showToast('تعذر نسخ الرابط', 'error');
-            }
+            if (typeof showToast === 'function') showToast('تعذر نسخ الرابط', 'error');
         });
     }
 }

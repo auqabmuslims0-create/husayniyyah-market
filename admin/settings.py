@@ -1,6 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash
-from utils import get_setting, set_setting
-from decorators import role_required
+from shared.utils import get_setting, set_setting
+from shared.decorators import role_required
 from . import admin_bp
 
 @admin_bp.route('/admin/settings', methods=['GET', 'POST'])
@@ -12,7 +12,6 @@ def admin_settings():
         wallet_number = request.form.get('wallet_number', '').strip()
         delivery_fee = request.form.get('delivery_fee', '').strip()
 
-        # سعر الاشتراك
         if subscription_price:
             try:
                 price = float(subscription_price)
@@ -24,7 +23,6 @@ def admin_settings():
             except ValueError:
                 flash('قيمة غير صالحة لسعر الاشتراك', 'error')
 
-        # مدة الاشتراك بالأيام
         if subscription_duration_days:
             try:
                 duration = int(subscription_duration_days)
@@ -36,12 +34,10 @@ def admin_settings():
             except ValueError:
                 flash('قيمة غير صالحة لمدة الاشتراك', 'error')
 
-        # رقم المحفظة
         if wallet_number:
             set_setting('wallet_number', wallet_number)
             flash('تم تحديث رقم المحفظة', 'success')
 
-        # رسوم التوصيل
         if delivery_fee:
             try:
                 fee = float(delivery_fee)
@@ -55,7 +51,6 @@ def admin_settings():
 
         return redirect(url_for('admin.admin_settings'))
 
-    # GET: جلب القيم الحالية
     current_price = get_setting('subscription_price', '500')
     try:
         current_price = float(current_price)

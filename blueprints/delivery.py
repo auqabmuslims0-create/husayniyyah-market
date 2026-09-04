@@ -1,18 +1,25 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify
 from database import db
-import models
+from models import User, Order, OrderItem, Store, Notification
 from sqlalchemy.orm import joinedload
-from time_utils import current_time
+from shared.time_utils import current_time
 from datetime import timedelta
-from services.order_service import OrderService
-from decorators import role_required
+from shared.services.order_service import OrderService
+from shared.services.notification_service import NotificationService
+from shared.repositories.delivery_repository import DeliveryRepository
+from shared.repositories.notification_repository import NotificationRepository
+from shared.decorators import role_required
+from blueprints.api.helpers import token_required
+from .api.helpers import serialize_order
 
 delivery_bp = Blueprint('delivery', __name__)
+
+# ========== واجهات المستخدم ==========
 
 @delivery_bp.route('/delivery')
 @role_required('delivery')
 def delivery_dashboard():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -21,16 +28,16 @@ def delivery_dashboard():
     allowed_statuses = ['ready', 'delivering', 'delivered']
 
     try:
-        query = models.Order.query.filter_by(delivery_person_id=user.id).options(
-            joinedload(models.Order.store),
-            joinedload(models.Order.customer),
-            joinedload(models.Order.items).joinedload(models.OrderItem.product)
+        query = Order.query.filter_by(delivery_person_id=user.id).options(
+            joinedload(Order.store),
+            joinedload(Order.customer),
+            joinedload(Order.items).joinedload(OrderItem.product)
         )
 
         if status_filter in allowed_statuses:
-            query = query.filter(models.Order.status == status_filter)
+            query = query.filter(Order.status == status_filter)
 
-        all_orders = query.order_by(models.Order.created_at.desc()).limit(50).all()
+        all_orders = query.order_by(Order.created_at.desc()).limit(50).all()
 
         ready_orders = [o for o in all_orders if o.status == 'ready']
         delivering_orders = [o for o in all_orders if o.status == 'delivering']
@@ -46,9 +53,9 @@ def delivery_dashboard():
                         continue
                 map_orders.append(order)
 
-        active_orders_count = models.Order.query.filter(
-            models.Order.delivery_person_id == user.id,
-            models.Order.status.in_(['ready', 'delivering'])
+        active_orders_count = Order.query.filter(
+            Order.delivery_person_id == user.id,
+            Order.status.in_(['ready', 'delivering'])
         ).count()
 
         shift_info = None
@@ -58,13 +65,11 @@ def delivery_dashboard():
                 'end': user.shift_end_time.strftime('%H:%M')
             }
 
-        notifications = models.Notification.query.filter_by(user_id=user.id).order_by(
-            models.Notification.created_at.desc()
-        ).limit(5).all()
+        notifications = NotificationRepository.get_user_notifications(user.id, limit=5)
 
-        stores_on_map = models.Store.query.filter(
-            models.Store.latitude.isnot(None),
-            models.Store.longitude.isnot(None)
+        stores_on_map = Store.query.filter(
+            Store.latitude.isnot(None),
+            Store.longitude.isnot(None)
         ).all()
 
     except Exception as e:
@@ -91,11 +96,11 @@ def delivery_dashboard():
 @delivery_bp.route('/delivery/orders/<int:order_id>/start', methods=['POST'])
 @role_required('delivery')
 def delivery_order_start(order_id):
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         return redirect(url_for('auth.login'))
 
-    order = models.Order.query.get_or_404(order_id)
+    order = Order.query.get_or_404(order_id)
 
     try:
         OrderService.start_delivery(user, order)
@@ -114,11 +119,11 @@ def delivery_order_start(order_id):
 @delivery_bp.route('/delivery/orders/<int:order_id>/deliver', methods=['POST'])
 @role_required('delivery')
 def delivery_order_deliver(order_id):
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         return redirect(url_for('auth.login'))
 
-    order = models.Order.query.get_or_404(order_id)
+    order = Order.query.get_or_404(order_id)
     delivery_code = request.form.get('delivery_code', '').strip()
 
     try:
@@ -135,20 +140,10 @@ def delivery_order_deliver(order_id):
 
     return redirect(url_for('delivery.delivery_dashboard'))
 
-@delivery_bp.route('/api/delivery_notifications')
-@role_required('delivery')
-def api_delivery_notifications():
-    user_id = session['user_id']
-    notifs = models.Notification.query.filter_by(user_id=user_id, is_read=False).order_by(
-        models.Notification.created_at.desc()
-    ).limit(5).all()
-    data = [{'title': n.title, 'message': n.message} for n in notifs]
-    return jsonify({'status': 'success', 'notifications': data})
-
 @delivery_bp.route('/delivery/availability', methods=['POST'])
 @role_required('delivery')
 def update_availability():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     if not user:
         return redirect(url_for('auth.login'))
 
@@ -158,3 +153,59 @@ def update_availability():
 
     flash(f'تم تحديث حالتك إلى {"متاح" if is_available else "غير متاح"}', 'success')
     return redirect(url_for('delivery.delivery_dashboard'))
+
+# ========== API ==========
+
+@delivery_bp.route('/api/delivery/orders', methods=['GET'])
+@token_required
+def delivery_get_orders(current_user):
+    if current_user.role != 'delivery':
+        return jsonify({'message': 'غير مسموح'}), 403
+    status = request.args.get('status')
+    orders = DeliveryRepository.get_assigned_orders(current_user.id, status=status)
+    return jsonify({'orders': [serialize_order(o) for o in orders]}), 200
+
+@delivery_bp.route('/api/delivery/orders/<int:order_id>/start', methods=['POST'])
+@token_required
+def delivery_start_order_api(current_user, order_id):
+    if current_user.role != 'delivery':
+        return jsonify({'message': 'غير مسموح'}), 403
+    order = Order.query.get_or_404(order_id)
+    try:
+        OrderService.start_delivery(current_user, order)
+        return jsonify({'message': 'تم بدء التسليم'}), 200
+    except PermissionError as e:
+        return jsonify({'message': str(e)}), 403
+    except ValueError as e:
+        return jsonify({'message': str(e)}), 400
+    except Exception:
+        db.session.rollback()
+        return jsonify({'message': 'حدث خطأ'}), 500
+
+@delivery_bp.route('/api/delivery/orders/<int:order_id>/deliver', methods=['POST'])
+@token_required
+def delivery_deliver_order_api(current_user, order_id):
+    if current_user.role != 'delivery':
+        return jsonify({'message': 'غير مسموح'}), 403
+    order = Order.query.get_or_404(order_id)
+    data = request.get_json(silent=True) or {}
+    code = data.get('delivery_code')
+    try:
+        OrderService.complete_delivery(current_user, order, code)
+        return jsonify({'message': 'تم تأكيد التسليم'}), 200
+    except PermissionError as e:
+        return jsonify({'message': str(e)}), 403
+    except ValueError as e:
+        return jsonify({'message': str(e)}), 400
+    except Exception:
+        db.session.rollback()
+        return jsonify({'message': 'حدث خطأ'}), 500
+
+@delivery_bp.route('/api/delivery/notifications', methods=['GET'])
+@token_required
+def delivery_notifications_api(current_user):
+    if current_user.role != 'delivery':
+        return jsonify({'message': 'غير مسموح'}), 403
+    notifs = NotificationRepository.get_user_notifications(current_user.id, limit=5, filter_read=False)
+    data = [{'title': n.title, 'message': n.message} for n in notifs]
+    return jsonify({'status': 'success', 'notifications': data}), 200

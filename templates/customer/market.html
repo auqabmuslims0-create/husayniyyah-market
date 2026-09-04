@@ -2,7 +2,6 @@
 {% import '_macros.html' as macros %}
 
 {% block title %}السوق{% endblock %}
-
 {% block head %}
 <style>
     /* تنسيق خاص لصفحة السوق */
@@ -125,14 +124,12 @@
             gap: 10px;
         }
     }
-    /* تحسين بطاقات المنتج لعرض الصور */
     .product-card-image img {
         width: 100%;
         height: 100%;
         object-fit: cover;
         display: block;
     }
-    /* تنسيق قسم عدم الاتصال */
     #offlineContent {
         display: none;
     }
@@ -180,9 +177,7 @@
 
 {% block content %}
 <div class="container">
-    <!-- المحتوى العادي (عند الاتصال) -->
     <div id="onlineContent">
-        <!-- شريط البحث والفلاتر -->
         <div class="row market-header-section">
             <div class="col-12">
                 <div class="d-flex gap-2 align-items-center">
@@ -199,7 +194,6 @@
             </div>
         </div>
 
-        <!-- شريط المتاجر المفتوحة -->
         <div class="mb-4">
             <h5 class="fw-bold mb-2">متاجر مفتوحة الآن</h5>
             <div class="d-flex overflow-auto gap-2 pb-2 store-strip">
@@ -216,7 +210,6 @@
             </div>
         </div>
 
-        <!-- المنتجات -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h5 class="fw-bold mb-0">المنتجات</h5>
             <span class="text-muted small">{{ pagination.total }} منتج</span>
@@ -231,7 +224,6 @@
             {% endfor %}
         </div>
 
-        <!-- Pagination -->
         {% if pagination.pages > 1 %}
         <nav class="mt-4">
             <ul class="pagination justify-content-center">
@@ -255,7 +247,6 @@
         {% endif %}
     </div>
 
-    <!-- محتوى عدم الاتصال -->
     <div id="offlineContent">
         <div class="alert alert-warning text-center mb-3">
             <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض نسخة محفوظة من البيانات
@@ -269,7 +260,6 @@
     </div>
 </div>
 
-<!-- Offcanvas للتصفية (يبقى كما هو) -->
 <div class="offcanvas offcanvas-start filter-sidebar" tabindex="-1" id="filterSidebar">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title">تصفية النتائج</h5>
@@ -376,7 +366,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // حفظ المنتجات والمتاجر في IndexedDB إذا كان متصلاً
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
         const productsData = [
             {% for product in products %}
@@ -420,7 +409,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ==== التعامل مع وضع عدم الاتصال ====
     const onlineContent = document.getElementById('onlineContent');
     const offlineContent = document.getElementById('offlineContent');
 
@@ -437,14 +425,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadOfflineData() {
         try {
-            if (typeof OfflineDB === 'undefined') {
-                console.warn('OfflineDB غير متوفر');
-                return;
-            }
+            if (typeof OfflineDB === 'undefined') return;
             const stores = await OfflineDB.getAllStores();
             const products = await OfflineDB.getAllProducts();
 
-            // عرض المتاجر المحفوظة
             const storesStrip = document.getElementById('offlineStoresStrip');
             if (storesStrip) {
                 if (stores && stores.length > 0) {
@@ -461,7 +445,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
-            // عرض المنتجات المحفوظة
             const productsGrid = document.getElementById('offlineProductsGrid');
             if (productsGrid) {
                 if (products && products.length > 0) {
@@ -491,7 +474,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.addEventListener('online', function() {
         showOnlineContent();
-        // إعادة تحميل الصفحة عند عودة الاتصال لتحديث البيانات
         window.location.reload();
     });
 

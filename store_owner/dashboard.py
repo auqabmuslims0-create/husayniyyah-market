@@ -1,28 +1,28 @@
 from flask import render_template, request, redirect, url_for, flash, abort, session
 from database import db
-import models
+from models import User, Store, Product, Order, Category, Reel, Subscription, Review, ProductComment, ProductReaction
 from sqlalchemy import func
-from time_utils import current_time
-from utils import is_store_active, save_image, get_setting
+from shared.time_utils import current_time
+from shared.utils import is_store_active, save_image, get_setting
 from shared.validators import is_valid_phone_syrian
-from decorators import role_required
+from shared.decorators import role_required
 from . import store_bp
 from .common import check_store_access
 
 @store_bp.route('/my_stores')
 @role_required('owner')
 def my_stores():
-    user = db.session.get(models.User, session['user_id'])
-    from services.subscription_service import SubscriptionService
+    user = db.session.get(User, session['user_id'])
+    from shared.services.subscription_service import SubscriptionService
     SubscriptionService.check_expiring_subscriptions()
 
-    stores = models.Store.query.filter_by(owner_id=user.id).all()
+    stores = Store.query.filter_by(owner_id=user.id).all()
     return render_template('store_owner/my_stores.html', stores=stores)
 
 @store_bp.route('/store/new', methods=['GET', 'POST'])
 @role_required('owner')
 def new_store():
-    user = db.session.get(models.User, session['user_id'])
+    user = db.session.get(User, session['user_id'])
     step = request.args.get('step', 1, type=int)
 
     if request.method == 'POST':
@@ -79,7 +79,7 @@ def new_store():
             working_hours = f"{opening_time} - {closing_time}" if opening_time and closing_time else ''
 
             data = session['store_temp']
-            store = models.Store(
+            store = Store(
                 owner_id=user.id,
                 name=data['name'],
                 description=data.get('description', ''),
@@ -112,40 +112,38 @@ def store_manage(store_id):
         return result[1]
     user, store = result
 
-    # إذا كان المتجر معلقًا، عرض صفحة التعليق مع رقم التواصل
     if store.subscription_status == 'suspended':
         wallet_number = get_setting('wallet_number', '0995680223')
         contact_phone = '+963' + wallet_number[1:] if wallet_number.startswith('0') else wallet_number
         return render_template('store_owner/store_suspended.html', store=store, contact_phone=contact_phone)
 
-    # إذا كان المتجر غير نشط (ليس معلقًا)، توجيه لصفحة الاشتراك
     if store.subscription_status != 'active':
         flash('هذا المتجر غير نشط، يجب دفع الاشتراك')
         return redirect(url_for('store.store_subscription', store_id=store.id))
 
-    products_count = models.Product.query.filter_by(store_id=store.id).count()
-    orders_count = models.Order.query.filter_by(store_id=store.id).count()
-    categories_count = models.Category.query.filter_by(store_id=store.id).count()
-    reels_count = models.Reel.query.filter_by(store_id=store.id).count()  # إضافة
-    total_revenue = db.session.query(func.sum(models.Order.total)).filter(
-        models.Order.store_id == store.id,
-        models.Order.status != 'cancelled'
+    products_count = Product.query.filter_by(store_id=store.id).count()
+    orders_count = Order.query.filter_by(store_id=store.id).count()
+    categories_count = Category.query.filter_by(store_id=store.id).count()
+    reels_count = Reel.query.filter_by(store_id=store.id).count()
+    total_revenue = db.session.query(func.sum(Order.total)).filter(
+        Order.store_id == store.id,
+        Order.status != 'cancelled'
     ).scalar() or 0
 
     products_ids = [p.id for p in store.products]
     if products_ids:
-        reviews_count = models.Review.query.filter(models.Review.product_id.in_(products_ids)).count()
-        comments_count = models.ProductComment.query.filter(models.ProductComment.product_id.in_(products_ids)).count()
-        reactions_count = models.ProductReaction.query.filter(models.ProductReaction.product_id.in_(products_ids)).count()
+        reviews_count = Review.query.filter(Review.product_id.in_(products_ids)).count()
+        comments_count = ProductComment.query.filter(ProductComment.product_id.in_(products_ids)).count()
+        reactions_count = ProductReaction.query.filter(ProductReaction.product_id.in_(products_ids)).count()
     else:
         reviews_count = comments_count = reactions_count = 0
 
-    views_count = db.session.query(func.sum(models.Product.views)).filter(
-        models.Product.store_id == store.id
+    views_count = db.session.query(func.sum(Product.views)).filter(
+        Product.store_id == store.id
     ).scalar() or 0
 
-    paid_sub = models.Subscription.query.filter_by(store_id=store.id, status='paid') \
-        .order_by(models.Subscription.end_date.desc()).first()
+    paid_sub = Subscription.query.filter_by(store_id=store.id, status='paid') \
+        .order_by(Subscription.end_date.desc()).first()
 
     return render_template('store_owner/store_manage.html',
                            store=store,
@@ -153,7 +151,7 @@ def store_manage(store_id):
                            products_count=products_count,
                            orders_count=orders_count,
                            categories_count=categories_count,
-                           reels_count=reels_count,  # إضافة
+                           reels_count=reels_count,
                            total_revenue=total_revenue,
                            reviews_count=reviews_count,
                            comments_count=comments_count,

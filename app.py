@@ -5,7 +5,8 @@ import time
 from urllib.parse import urlparse, urlunparse
 from dotenv import load_dotenv
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'shared'))
+# إضافة مسار المشروع إلى sys.path لضمان العثور على الوحدات
+sys.path.insert(0, os.path.dirname(__file__))
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, g
 from flask_limiter import Limiter
@@ -24,10 +25,9 @@ from admin import admin_bp
 from blueprints.api import api_bp
 from blueprints.social import social_bp
 from store_owner import store_bp
-from delivery.routes import delivery_bp
+from blueprints.delivery import delivery_bp
 
 from customer.market import market_bp
-# تعديل: استيراد الريلز من blueprints.reels بدلاً من customer.reels
 from blueprints.reels import reels_bp
 from customer.stores import stores_bp
 from customer.offers import offers_bp
@@ -266,19 +266,16 @@ def inject_nav_items():
     user = g.user
     endpoint = request.endpoint
 
-    # إذا كان الطلب لـ API أو static أو ليس له endpoint، لا نرسل nav_items
     if request.path.startswith('/api/') or request.path.startswith('/static/') or endpoint is None:
         return dict(nav_items=[])
 
     nav_items = []
 
-    # عناصر مشتركة للزوار غير المسجلين
     if user is None:
         nav_items.append({'type': 'link', 'url': url_for('auth.login'), 'label': 'تسجيل الدخول', 'icon': 'bi-box-arrow-in-right', 'active': endpoint == 'auth.login'})
         nav_items.append({'type': 'link', 'url': url_for('services.services_page'), 'label': 'حول / خدمات', 'icon': 'bi-info-circle', 'active': endpoint == 'services.services_page'})
         return dict(nav_items=nav_items)
 
-    # عناصر حسب الدور
     if user.role == 'admin':
         nav_items.append({'type': 'link', 'url': url_for('admin.admin_dashboard'), 'label': 'لوحة المدير', 'icon': 'bi-speedometer2', 'active': endpoint == 'admin.admin_dashboard'})
         nav_items.append({'type': 'divider'})
@@ -303,10 +300,8 @@ def inject_nav_items():
         nav_items.append({'type': 'link', 'url': url_for('auth.account'), 'label': 'الإعدادات', 'icon': 'bi-gear', 'active': endpoint == 'auth.account'})
         nav_items.append({'type': 'link', 'url': url_for('services.services_page'), 'label': 'حول / خدمات', 'icon': 'bi-info-circle', 'active': endpoint == 'services.services_page'})
     else:
-        # دور غير معروف
         nav_items.append({'type': 'link', 'url': url_for('auth.account'), 'label': 'الإعدادات', 'icon': 'bi-gear', 'active': endpoint == 'auth.account'})
 
-    # عناصر مشتركة للجميع (زر الوضع الداكن وتسجيل الخروج)
     nav_items.append({'type': 'divider'})
     nav_items.append({'type': 'button', 'id': 'sidebarThemeToggle', 'label': 'الوضع الداكن', 'icon': 'bi-moon-stars'})
     nav_items.append({'type': 'link', 'url': url_for('auth.logout'), 'label': 'تسجيل الخروج', 'icon': 'bi-box-arrow-left', 'active': False})
@@ -319,11 +314,9 @@ def inject_show_bottom_nav():
     user = g.user
     endpoint = request.endpoint
 
-    # لا نعرض الشريط السفلي في صفحات API أو static
     if request.path.startswith('/api/') or request.path.startswith('/static/') or endpoint is None:
         return dict(show_bottom_nav=False)
 
-    # قائمة الصفحات التي يظهر فيها الشريط السفلي للمستخدمين المسجلين (خاصة العملاء)
     allowed_customer_endpoints = [
         'market.market',
         'reels.reels_page',
@@ -336,7 +329,6 @@ def inject_show_bottom_nav():
         'account.favorites'
     ]
 
-    # للزوار (غير مسجلين) يمكن عرض الشريط السفلي في الصفحات العامة
     public_endpoints = [
         'market.market', 'reels.reels_page', 'offers.offers_page', 'stores.stores_page',
         'stores.store_public', 'stores.product_public', 'services.services_page'
@@ -348,7 +340,6 @@ def inject_show_bottom_nav():
             show = True
         elif user.role == 'owner' and endpoint == 'market.market':
             show = True
-        # يمكن إضافة أدوار أخرى لاحقًا
     else:
         if endpoint in public_endpoints:
             show = True
