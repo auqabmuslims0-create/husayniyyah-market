@@ -90,7 +90,7 @@ def admin_send_message():
             user_id=user_id,
             title='رسالة جديدة من الدعم',
             message=message,
-            link=url_for('services.contact'),
+            link=url_for('services.support'),
             type_=NotificationService.TYPE_MESSAGE
         )
         db.session.commit()

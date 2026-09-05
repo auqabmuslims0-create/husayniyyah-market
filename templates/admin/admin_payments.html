@@ -262,6 +262,29 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if pagination.pages > 1 %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('admin.admin_payments', status=status, method=method, page=pagination.prev_num) if pagination.has_prev else '#' }}">السابق</a>
+            </li>
+            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if page_num %}
+                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('admin.admin_payments', status=status, method=method, page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('admin.admin_payments', status=status, method=method, page=pagination.next_num) if pagination.has_next else '#' }}">التالي</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+
     {% else %}
         <div class="text-center py-5 empty-state">
             <i class="bi bi-cash-stack display-1 text-muted"></i>

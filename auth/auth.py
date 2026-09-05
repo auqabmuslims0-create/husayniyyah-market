@@ -107,11 +107,7 @@ def register():
                 try:
                     avatar_url = save_image(avatar_file)
                 except Exception as e:
-                    flash(f'حدث خطأ أثناء رفع الصورة: {str(e)}', 'error')
-                    return redirect(url_for('auth.register', step=3))
-
-                if not avatar_url:
-                    flash('فشل رفع الصورة، تأكد من الصيغة المدعومة (png, jpg, jpeg, gif, webp)', 'error')
+                    flash(str(e), 'error')
                     return redirect(url_for('auth.register', step=3))
 
             user = User(

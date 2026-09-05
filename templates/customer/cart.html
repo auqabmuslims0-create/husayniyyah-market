@@ -487,13 +487,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // معالجة حذف المنتج من السلة
     document.querySelectorAll('.btn-remove').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             const productId = this.dataset.productId;
-            if (confirm('هل تريد إزالة هذا المنتج من السلة؟')) {
-                LocalStore.removeFromCart(parseInt(productId));
-                LocalStore.updateCartBadges();
-                location.reload();
+            if (!confirm('هل تريد إزالة هذا المنتج من السلة؟')) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('_csrf_token', window.csrfToken);
+                const response = await fetch(`/cart/remove/${productId}`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-Token': window.csrfToken,
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // تحديث التخزين المحلي
+                    if (typeof LocalStore !== 'undefined') {
+                        LocalStore.removeFromCart(parseInt(productId));
+                        LocalStore.updateCartBadges();
+                    }
+                    showToast('تمت إزالة المنتج من السلة', 'success');
+                    // إعادة تحميل الصفحة بعد فترة قصيرة
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    showToast(data.message || 'تعذر الحذف', 'error');
+                }
+            } catch (err) {
+                console.error('Error removing from cart:', err);
+                showToast('حدث خطأ أثناء الإزالة', 'error');
             }
         });
     });

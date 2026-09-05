@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify, current_app
 from database import db
 from models import User, Order, OrderItem, Store, Notification
 from sqlalchemy.orm import joinedload
@@ -8,7 +8,7 @@ from shared.services.order_service import OrderService
 from shared.services.notification_service import NotificationService
 from shared.repositories.delivery_repository import DeliveryRepository
 from shared.repositories.notification_repository import NotificationRepository
-from shared.decorators import role_required
+from shared.decorators import role_required, login_required, api_login_required
 from blueprints.api.helpers import token_required
 from .api.helpers import serialize_order
 
@@ -73,7 +73,7 @@ def delivery_dashboard():
         ).all()
 
     except Exception as e:
-        app.logger.exception('خطأ في تحميل لوحة المندوب')
+        current_app.logger.exception('خطأ في تحميل لوحة المندوب')
         flash('حدث خطأ في تحميل لوحة التحكم', 'error')
         return redirect(url_for('auth.dashboard'))
 
@@ -111,7 +111,7 @@ def delivery_order_start(order_id):
         flash(str(e), 'error')
     except Exception as e:
         db.session.rollback()
-        app.logger.exception('خطأ في بدء التسليم')
+        current_app.logger.exception('خطأ في بدء التسليم')
         flash('حدث خطأ أثناء بدء التسليم', 'error')
 
     return redirect(url_for('delivery.delivery_dashboard'))
@@ -135,7 +135,7 @@ def delivery_order_deliver(order_id):
         flash(str(e), 'error')
     except Exception as e:
         db.session.rollback()
-        app.logger.exception('خطأ في تأكيد التسليم')
+        current_app.logger.exception('خطأ في تأكيد التسليم')
         flash('حدث خطأ أثناء تأكيد التسليم', 'error')
 
     return redirect(url_for('delivery.delivery_dashboard'))
@@ -202,10 +202,14 @@ def delivery_deliver_order_api(current_user, order_id):
         return jsonify({'message': 'حدث خطأ'}), 500
 
 @delivery_bp.route('/api/delivery/notifications', methods=['GET'])
-@token_required
-def delivery_notifications_api(current_user):
-    if current_user.role != 'delivery':
+@login_required
+def delivery_notifications_api():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'message': 'غير مسموح'}), 401
+    user = db.session.get(User, user_id)
+    if not user or user.role != 'delivery':
         return jsonify({'message': 'غير مسموح'}), 403
-    notifs = NotificationRepository.get_user_notifications(current_user.id, limit=5, filter_read=False)
+    notifs = NotificationRepository.get_user_notifications(user_id, limit=5, filter_read=False)
     data = [{'title': n.title, 'message': n.message} for n in notifs]
     return jsonify({'status': 'success', 'notifications': data}), 200

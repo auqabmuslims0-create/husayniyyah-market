@@ -118,17 +118,47 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // معالجة إزالة المفضلة عبر الخادم
     document.querySelectorAll('.remove-favorite-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
             const type = this.dataset.type;
             const id = parseInt(this.dataset.id);
-            LocalStore.toggleFavorite(type, id);
             const wrapper = this.closest('.favorite-item-wrapper');
-            if (wrapper) wrapper.remove();
-            showToast('تمت إزالة العنصر من المفضلة', 'success');
+
+            try {
+                const response = await fetch('/favorite/toggle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': window.csrfToken
+                    },
+                    body: JSON.stringify({ type: type, id: id })
+                });
+                const data = await response.json();
+                if (response.ok && data.status === 'success') {
+                    if (wrapper) wrapper.remove();
+                    // تحديث التخزين المحلي
+                    if (typeof LocalStore !== 'undefined') {
+                        LocalStore.toggleFavorite(type, id);
+                    }
+                    showToast(data.message || 'تمت إزالة العنصر من المفضلة', 'success');
+
+                    // التحقق إذا لم تعد هناك عناصر معروضة
+                    const remaining = document.querySelectorAll('.favorite-item-wrapper').length;
+                    if (remaining === 0) {
+                        location.reload();
+                    }
+                } else {
+                    showToast(data.message || 'حدث خطأ', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('حدث خطأ أثناء الإزالة', 'error');
+            }
         });
     });
 
+    // وضع عدم الاتصال: عرض المفضلة المحلية
     if (!navigator.onLine) {
         document.querySelectorAll('.server-favs').forEach(el => el.style.display = 'none');
         const localFavContainer = document.getElementById('localFavoritesContainer');

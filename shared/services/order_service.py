@@ -4,9 +4,11 @@ from models import User, Order, OrderItem, Product, Payment, OrderStatusHistory
 from shared.repositories.order_repository import OrderRepository
 from shared.repositories.product_repository import ProductRepository
 from shared.repositories.store_repository import StoreRepository
+from shared.repositories.user_repository import UserRepository
 from shared.services.notification_service import NotificationService
 from shared.services.payment_service import PaymentService
 from shared.utils import get_setting, is_store_active, is_store_open
+from shared.delivery_utils import is_delivery_available
 from shared.time_utils import current_time
 import random
 
@@ -90,7 +92,7 @@ class OrderService:
             'is_cancelled': False,
             'payment_method': payment_method
         })
-        db.session.flush()  # للحصول على order.id
+        db.session.flush()
 
         PaymentService.create_payment(
             user_id=user.id,

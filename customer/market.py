@@ -59,8 +59,7 @@ def market():
     open_stores = [s for s in stores if is_store_open(s)]
 
     categories = Category.query.join(Product).join(Store).filter(
-        Store.subscription_status == 'active',
-        Product.is_offer == False
+        Store.subscription_status == 'active'
     ).distinct().all()
 
     cart = session.get('cart', {})

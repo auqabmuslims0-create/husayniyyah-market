@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort
 from sqlalchemy.orm import joinedload
 from database import db
-from models import Product, CartItem, Store, Order, OrderItem, User
+from models import Product, CartItem, Store, Order, OrderItem, OrderStatusHistory, Payment, User
 from shared.time_utils import current_time
 from datetime import timedelta
 from shared.utils import safe_redirect_target, is_store_active, get_setting
@@ -83,8 +83,9 @@ def cart():
             store_id = item['product'].store_id
             if store_id not in grouped:
                 grouped[store_id] = {'store': item['product'].store, 'cart_items': [], 'total': 0}
+            effective_price = OrderService.get_effective_price(item['product'])
             grouped[store_id]['cart_items'].append(item)
-            grouped[store_id]['total'] += item['product'].price * item['quantity']
+            grouped[store_id]['total'] += effective_price * item['quantity']
 
     orders = []
     if 'user_id' in session:
@@ -255,13 +256,33 @@ def update_cart(product_id):
     _save_session_cart(cart)
 
     if is_ajax:
-        item_total = product.price * cart.get(pid_str, 0)
+        effective_price = OrderService.get_effective_price(product)
+        item_total = effective_price * cart.get(pid_str, 0)
         return jsonify({
             'status': 'success',
             'cart_count': sum(cart.values()),
             'item_total': item_total,
             'quantity': cart.get(pid_str, 0)
         })
+    return redirect(request.referrer or url_for('cart.cart'))
+
+@cart_bp.route('/cart/remove/<int:product_id>', methods=['POST'])
+def remove_from_cart(product_id):
+    """إزالة منتج محدد من السلة (للجلسة وقاعدة البيانات)."""
+    cart = _get_session_cart()
+    pid_str = str(product_id)
+    cart.pop(pid_str, None)
+    _save_session_cart(cart)
+
+    if 'user_id' in session:
+        CartItem.query.filter_by(
+            user_id=session['user_id'], product_id=product_id
+        ).delete()
+        db.session.commit()
+
+    if _is_ajax():
+        return jsonify({'status': 'success', 'message': 'تمت إزالة المنتج من السلة', 'cart_count': sum(cart.values())})
+    flash('تمت إزالة المنتج من السلة', 'success')
     return redirect(request.referrer or url_for('cart.cart'))
 
 @cart_bp.route('/cart/clear', methods=['POST'])
@@ -328,7 +349,7 @@ def checkout(store_id):
         flash('لا توجد منتجات لهذا المتجر في السلة')
         return redirect(url_for('cart.cart'))
 
-    product_total = sum(item['product'].price * item['quantity'] for item in items)
+    product_total = sum(OrderService.get_effective_price(item['product']) * item['quantity'] for item in items)
     delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
     grand_total = product_total + delivery_fee
 
@@ -479,7 +500,7 @@ def buy_product(product_id):
         quantity = product.stock_quantity
 
     items = [{'product': product, 'quantity': quantity}]
-    product_total = product.price * quantity
+    product_total = OrderService.get_effective_price(product) * quantity
     delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
     grand_total = product_total + delivery_fee
 
@@ -520,12 +541,15 @@ def delete_order(order_id):
         return redirect(url_for('cart.cart'))
 
     try:
+        # حذف جميع العلاقات المرتبطة
+        OrderItem.query.filter_by(order_id=order.id).delete()
+        OrderStatusHistory.query.filter_by(order_id=order.id).delete()
         Payment.query.filter_by(order_id=order.id).delete()
         db.session.delete(order)
         db.session.commit()
         flash('تم حذف الطلب بنجاح', 'success')
-    except Exception:
+    except Exception as e:
         db.session.rollback()
-        flash('حدث خطأ أثناء حذف الطلب', 'error')
+        flash('حدث خطأ أثناء حذف الطلب: ' + str(e), 'error')
 
     return redirect(url_for('cart.cart'))

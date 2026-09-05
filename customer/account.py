@@ -7,6 +7,50 @@ from shared.decorators import login_required
 
 account_bp = Blueprint('account', __name__)
 
+def _is_ajax():
+    return request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.accept_json
+
+@account_bp.route('/favorite/toggle', methods=['POST'])
+@login_required
+def toggle_favorite_general():
+    """تبديل المفضلة (منتج أو متجر) عبر JSON أو form."""
+    user_id = session['user_id']
+    data = request.get_json(silent=True) or {}
+    fav_type = data.get('type') or request.form.get('type')
+    fav_id = data.get('id') or request.form.get('id', type=int)
+
+    if fav_type not in ['product', 'store'] or not fav_id:
+        return jsonify({'status': 'error', 'message': 'بيانات غير صالحة'}), 400
+
+    try:
+        if fav_type == 'product':
+            product = Product.query.get_or_404(fav_id)
+            existing = Favorite.query.filter_by(user_id=user_id, product_id=product.id).first()
+            if existing:
+                db.session.delete(existing)
+                db.session.commit()
+                return jsonify({'status': 'success', 'message': 'تمت إزالة المنتج من المفضلة', 'is_favorite': False})
+            else:
+                fav = Favorite(user_id=user_id, product_id=product.id)
+                db.session.add(fav)
+                db.session.commit()
+                return jsonify({'status': 'success', 'message': 'تمت إضافة المنتج إلى المفضلة', 'is_favorite': True})
+        else:  # store
+            store = Store.query.get_or_404(fav_id)
+            existing = Favorite.query.filter_by(user_id=user_id, store_id=store.id).first()
+            if existing:
+                db.session.delete(existing)
+                db.session.commit()
+                return jsonify({'status': 'success', 'message': 'تمت إزالة المتجر من المفضلة', 'is_favorite': False})
+            else:
+                fav = Favorite(user_id=user_id, store_id=store.id)
+                db.session.add(fav)
+                db.session.commit()
+                return jsonify({'status': 'success', 'message': 'تمت إضافة المتجر إلى المفضلة', 'is_favorite': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': f'حدث خطأ: {str(e)}'}), 500
+
 @account_bp.route('/api/favorites/sync', methods=['POST'])
 @login_required
 def sync_favorites():
@@ -53,13 +97,18 @@ def toggle_favorite_product(product_id):
     if existing:
         db.session.delete(existing)
         db.session.commit()
-        flash('تمت إزالة المنتج من المفضلة')
+        message = 'تمت إزالة المنتج من المفضلة'
+        is_favorite = False
     else:
         fav = Favorite(user_id=user_id, product_id=product_id)
         db.session.add(fav)
         db.session.commit()
-        flash('تمت إضافة المنتج إلى المفضلة')
+        message = 'تمت إضافة المنتج إلى المفضلة'
+        is_favorite = True
 
+    if _is_ajax():
+        return jsonify({'status': 'success', 'message': message, 'is_favorite': is_favorite})
+    flash(message, 'success')
     next_url = safe_redirect_target(request.form.get('next')) or safe_referrer() or url_for('market.market')
     return redirect(next_url)
 
@@ -72,13 +121,18 @@ def toggle_favorite_store(store_id):
     if existing:
         db.session.delete(existing)
         db.session.commit()
-        flash('تمت إزالة المتجر من المفضلة')
+        message = 'تمت إزالة المتجر من المفضلة'
+        is_favorite = False
     else:
         fav = Favorite(user_id=user_id, store_id=store_id)
         db.session.add(fav)
         db.session.commit()
-        flash('تمت إضافة المتجر إلى المفضلة')
+        message = 'تمت إضافة المتجر إلى المفضلة'
+        is_favorite = True
 
+    if _is_ajax():
+        return jsonify({'status': 'success', 'message': message, 'is_favorite': is_favorite})
+    flash(message, 'success')
     next_url = safe_redirect_target(request.form.get('next')) or safe_referrer() or url_for('stores.stores_page')
     return redirect(next_url)
 

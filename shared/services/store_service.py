@@ -1,9 +1,10 @@
 from database import db
 from models import Store, Order, OrderItem, Product, Category, Subscription, Payment, Favorite
+import models
 from shared.repositories.store_repository import StoreRepository
 from shared.repositories.notification_repository import NotificationRepository
 from shared.services.notification_service import NotificationService
-from shared.utils import get_upload_path, is_store_active, get_setting
+from shared.utils import get_upload_path, is_store_active, get_setting, delete_cloudinary_file
 from shared.time_utils import current_time
 from datetime import timedelta
 import os
@@ -64,7 +65,7 @@ class StoreService:
             db.session.commit()
 
             if store.owner_id:
-                owner = db.session.get(User, store.owner_id)
+                owner = db.session.get(models.User, store.owner_id)
                 if owner:
                     NotificationService.send_to_user(
                         user_id=owner.id,
@@ -93,26 +94,18 @@ class StoreService:
                 OrderItem.query.filter_by(order_id=order.id).delete()
                 db.session.delete(order)
 
-            # حذف المنتجات وملفاتها
+            # حذف المنتجات وملفاتها من Cloudinary
             products = Product.query.filter_by(store_id=store.id).all()
             for product in products:
+                # حذف الصور من Cloudinary
                 if product.images:
                     for img_name in product.images.split(','):
                         img_name = img_name.strip()
                         if img_name:
-                            file_path = get_upload_path(img_name)
-                            if file_path and os.path.exists(file_path):
-                                try:
-                                    os.remove(file_path)
-                                except Exception:
-                                    pass
+                            delete_cloudinary_file(img_name)
                 if product.video:
-                    video_path = get_upload_path(product.video)
-                    if video_path and os.path.exists(video_path):
-                        try:
-                            os.remove(video_path)
-                        except Exception:
-                            pass
+                    delete_cloudinary_file(product.video)
+
                 # حذف العلاقات المرتبطة بالمنتج
                 models.ProductReaction.query.filter_by(product_id=product.id).delete()
                 models.ProductComment.query.filter_by(product_id=product.id).delete()
@@ -129,6 +122,7 @@ class StoreService:
             StoreRepository.delete(store)
             db.session.commit()
             return True, 'تم حذف المتجر بنجاح'
-        except Exception:
+        except Exception as e:
             db.session.rollback()
+            logger.error(f'خطأ في حذف المتجر {store_id}: {str(e)}')
             return False, 'حدث خطأ أثناء حذف المتجر'

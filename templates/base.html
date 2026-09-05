@@ -66,116 +66,28 @@
   </script>
 
   <style>
-    .connection-indicator {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 9999;
-      background: rgba(0,0,0,0.6);
-      color: #fff;
-      border-radius: 30px;
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    }
-    .connection-indicator.show { opacity: 1; pointer-events: auto; }
-    .connection-indicator svg { width: 18px; height: 18px; }
-
-    #appSplash {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: #f7f4ef;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-      opacity: 1;
-      transition: opacity 0.5s ease;
-    }
-    #appSplash.fade-out { opacity: 0; pointer-events: none; }
-    #appSplash img { width: 120px; height: 120px; border-radius: 30px; margin-bottom: 20px; animation: pulse 2s infinite; }
-    #appSplash h1 { color: #2d2d2d; font-family: 'Tajawal', sans-serif; font-weight: bold; font-size: 2rem; margin: 0; }
-    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-
-    input, textarea, select, [contenteditable="true"] { position: relative; z-index: 1; }
-    .modal { z-index: 3000 !important; pointer-events: auto !important; }
-    .modal-backdrop { z-index: 2990 !important; }
-    .modal-dialog { z-index: 3001 !important; pointer-events: auto !important; }
-    .modal-content { pointer-events: auto !important; }
-    .offcanvas { z-index: 1045 !important; }
-
-    .toast-container-top {
-      position: fixed;
-      top: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 2000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      pointer-events: none;
-      width: auto;
-      max-width: 90vw;
-    }
-    .toast-container-top .toast {
-      pointer-events: auto;
-      margin: 0;
-      min-width: 250px;
-      max-width: 400px;
-      width: auto;
-    }
-
-    .toast-modern .toast-body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      text-align: center;
-      padding: 10px 15px;
-    }
-    .toast-modern .toast-body .toast-message {
-      flex: 1;
-      text-align: center;
-    }
-    .toast-modern .toast-body .toast-image {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex-shrink: 0;
-      border: 2px solid rgba(255,255,255,0.5);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    body.dark-mode .toast-modern .toast-body .toast-image {
-      border-color: rgba(255,255,255,0.2);
-    }
-    .toast-icon {
-      font-size: 1.2rem;
-      flex-shrink: 0;
-    }
-    .notification-dot {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 10px;
-      height: 10px;
-      background-color: #dc3545;
-      border-radius: 50%;
-      border: 2px solid #fff;
-      display: none;
-    }
+    .connection-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index:9999; background:rgba(0,0,0,0.6); color:#fff; border-radius:30px; padding:12px 20px; display:flex; align-items:center; gap:6px; font-size:.85rem; font-weight:600; opacity:0; pointer-events:none; transition:opacity .3s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); box-shadow:0 4px 10px rgba(0,0,0,0.2); }
+    .connection-indicator.show { opacity:1; pointer-events:auto; }
+    .connection-indicator svg { width:18px; height:18px; }
+    #appSplash { position:fixed; top:0; left:0; width:100%; height:100%; background:#f7f4ef; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; opacity:1; transition:opacity .5s; }
+    #appSplash.fade-out { opacity:0; pointer-events:none; }
+    #appSplash img { width:120px; height:120px; border-radius:30px; margin-bottom:20px; animation:pulse 2s infinite; }
+    #appSplash h1 { color:#2d2d2d; font-family:'Tajawal',sans-serif; font-weight:bold; font-size:2rem; margin:0; }
+    @keyframes pulse { 0% { transform:scale(1); } 50% { transform:scale(1.1); } 100% { transform:scale(1); } }
+    input, textarea, select, [contenteditable="true"] { position:relative; z-index:1; }
+    .modal { z-index:3000 !important; pointer-events:auto !important; }
+    .modal-backdrop { z-index:2990 !important; }
+    .modal-dialog { z-index:3001 !important; pointer-events:auto !important; }
+    .modal-content { pointer-events:auto !important; }
+    .offcanvas { z-index:1045 !important; }
+    .toast-container-top { position:fixed; top:70px; left:50%; transform:translateX(-50%); z-index:2000; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; width:auto; max-width:90vw; }
+    .toast-container-top .toast { pointer-events:auto; margin:0; min-width:250px; max-width:400px; width:auto; }
+    .toast-modern .toast-body { display:flex; align-items:center; justify-content:center; gap:8px; text-align:center; padding:10px 15px; }
+    .toast-modern .toast-body .toast-message { flex:1; text-align:center; }
+    .toast-modern .toast-body .toast-image { width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0; border:2px solid rgba(255,255,255,0.5); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    body.dark-mode .toast-modern .toast-body .toast-image { border-color:rgba(255,255,255,0.2); }
+    .toast-icon { font-size:1.2rem; flex-shrink:0; }
+    .notification-dot { position:absolute; top:8px; right:8px; width:10px; height:10px; background-color:#dc3545; border-radius:50%; border:2px solid #fff; display:none; }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -327,182 +239,62 @@
 
   <script>
     var csrfToken = "{{ csrf_token }}";
+    window.csrfToken = csrfToken;  // تعريف window.csrfToken
     window.isAuthenticated = {{ 'true' if current_user else 'false' }};
 
-    // ====== دالة showToast محسّنة ======
     function showToast(message, type = 'info', image = null) {
+      if (type === 'danger') type = 'error';
       const container = document.getElementById('toastContainerTop');
       if (!container) return;
-
-      while (container.firstChild) {
-        const oldToast = container.firstChild;
-        if (oldToast.classList && oldToast.classList.contains('toast')) {
-          const bsToast = bootstrap.Toast.getInstance(oldToast);
-          if (bsToast) bsToast.dispose();
-        }
-        container.removeChild(oldToast);
-      }
-
-      if (type === 'danger') type = 'error';
       const toast = document.createElement('div');
       toast.className = 'toast align-items-center toast-modern border-0';
       toast.setAttribute('role', 'alert');
       toast.setAttribute('data-bs-delay', '4000');
       toast.setAttribute('data-bs-autohide', 'true');
-
-      let iconClass = '';
-      if (type === 'success') iconClass = 'bi-check-circle-fill text-success';
-      else if (type === 'error') iconClass = 'bi-exclamation-circle-fill text-danger';
-      else iconClass = 'bi-info-circle-fill text-info';
-
       let imageHtml = '';
       if (image) {
         imageHtml = `<img src="${image}" class="toast-image" alt="">`;
       }
-
-      toast.innerHTML = `
-        <div class="d-flex">
-          <div class="toast-body">
-            ${imageHtml}
-            <i class="bi ${iconClass} toast-icon"></i>
-            <span class="toast-message">${message}</span>
-          </div>
-        </div>`;
-      container.appendChild(toast);
+      toast.innerHTML = `<div class="d-flex"><div class="toast-body">${imageHtml}<span class="toast-message">${message}</span></div></div>`;
+      container.prepend(toast);
       const bsToast = new bootstrap.Toast(toast, { delay: 4000, autohide: true });
       bsToast.show();
-      toast.addEventListener('hidden.bs.toast', () => {
-        toast.remove();
-      });
+      toast.addEventListener('hidden.bs.toast', () => toast.remove());
     }
 
-    // ====== دوال النوافذ المنبثقة الموحدة ======
-    function showConfirmModal(message, callback) {
-      const modalEl = document.getElementById('confirmModal');
-      if (!modalEl) return;
-      document.getElementById('confirmModalMessage').textContent = message;
-      const btn = document.getElementById('confirmModalBtn');
-      btn.onclick = function() {
-        if (typeof callback === 'function') {
-          callback();
-        }
-        bootstrap.Modal.getInstance(modalEl).hide();
-      };
-      bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    }
-
-    function showConfirm(message) {
-      return new Promise((resolve) => {
-        const modalEl = document.getElementById('confirmModal');
-        if (!modalEl) {
-          resolve(false);
-          return;
-        }
-        document.getElementById('confirmModalMessage').textContent = message;
-        const btn = document.getElementById('confirmModalBtn');
-        const handleConfirm = () => {
-          cleanup();
-          resolve(true);
-          bootstrap.Modal.getInstance(modalEl).hide();
-        };
-        const handleCancel = () => {
-          cleanup();
-          resolve(false);
-          bootstrap.Modal.getInstance(modalEl).hide();
-        };
-        function cleanup() {
-          btn.removeEventListener('click', handleConfirm);
-          modalEl.removeEventListener('hidden.bs.modal', handleCancel);
-        }
-        btn.addEventListener('click', handleConfirm);
-        modalEl.addEventListener('hidden.bs.modal', handleCancel, { once: true });
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-      });
-    }
-
-    function showAlert(message) {
-      const modalEl = document.getElementById('alertModal');
-      if (!modalEl) return;
-      document.getElementById('alertModalMessage').textContent = message;
-      bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    }
-
-    function showPrompt(message, defaultValue = '') {
-      return new Promise((resolve) => {
-        const modalEl = document.getElementById('promptModal');
-        if (!modalEl) {
-          resolve(null);
-          return;
-        }
-        document.getElementById('promptModalMessage').textContent = message;
-        const input = document.getElementById('promptInput');
-        input.value = defaultValue || '';
-        const btn = document.getElementById('promptModalBtn');
-        const handleConfirm = () => {
-          cleanup();
-          resolve(input.value);
-          bootstrap.Modal.getInstance(modalEl).hide();
-        };
-        const handleCancel = () => {
-          cleanup();
-          resolve(null);
-          bootstrap.Modal.getInstance(modalEl).hide();
-        };
-        function cleanup() {
-          btn.removeEventListener('click', handleConfirm);
-          modalEl.removeEventListener('hidden.bs.modal', handleCancel);
-        }
-        btn.addEventListener('click', handleConfirm);
-        modalEl.addEventListener('hidden.bs.modal', handleCancel, { once: true });
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-      });
-    }
-
-    // ====== نافذة شرح طلب الإذن ======
-    function showPermissionModal(message, allowText = 'السماح', cancelText = 'إلغاء') {
-      return new Promise((resolve) => {
-        const modalEl = document.getElementById('permissionModal');
-        if (!modalEl) {
-          resolve(false);
-          return;
-        }
-        document.getElementById('permissionModalMessage').textContent = message;
-        const allowBtn = document.getElementById('permissionAllowBtn');
-        const cancelBtn = document.getElementById('permissionCancelBtn');
-        allowBtn.textContent = allowText;
-        cancelBtn.textContent = cancelText;
-        const handleAllow = () => {
-          cleanup();
-          resolve(true);
-          bootstrap.Modal.getInstance(modalEl).hide();
-        };
-        const handleCancel = () => {
-          cleanup();
-          resolve(false);
-          bootstrap.Modal.getInstance(modalEl).hide();
-        };
-        function cleanup() {
-          allowBtn.removeEventListener('click', handleAllow);
-          cancelBtn.removeEventListener('click', handleCancel);
-          modalEl.removeEventListener('hidden.bs.modal', handleCancel);
-        }
-        allowBtn.addEventListener('click', handleAllow);
-        cancelBtn.addEventListener('click', handleCancel);
-        modalEl.addEventListener('hidden.bs.modal', handleCancel, { once: true });
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
-      });
-    }
-
-    // ====== بقية الدوال ======
     function updateCartBadges(count) {
       LocalStore.updateCartBadges();
     }
 
     async function addToCart(productId, quantity = 1, callback = null) {
+        // تحديث التخزين المحلي
         LocalStore.addToCart(productId, quantity);
         LocalStore.updateCartBadges();
         showToast('تمت الإضافة', 'success');
-        if (callback) callback({ cart_count: Object.values(LocalStore.getCart()).reduce((a,b)=>a+b,0) });
+
+        // إرسال إلى الخادم لتحديث الجلسة
+        try {
+            const formData = new FormData();
+            formData.append('quantity', quantity);
+            const response = await fetch(`/cart/add/${productId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                if (callback) callback(data);
+            } else {
+                console.warn('server add failed:', data.message);
+                if (callback) callback({ cart_count: Object.values(LocalStore.getCart()).reduce((a,b)=>a+b,0) });
+            }
+        } catch (err) {
+            console.error('server add error:', err);
+            if (callback) callback({ cart_count: Object.values(LocalStore.getCart()).reduce((a,b)=>a+b,0) });
+        }
+
         return { status: 'success' };
     }
 
@@ -533,6 +325,61 @@
             }
         }
         showToast('تم تحديث المفضلة', 'success');
+
+        // إرسال إلى الخادم
+        try {
+            const response = await fetch('/favorite/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ type: 'product', id: productId })
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                if (data.is_favorite) {
+                    // تأكد من الأيقونة
+                    if (icon) {
+                        icon.classList.remove('bi-heart');
+                        icon.classList.add('bi-heart-fill');
+                    }
+                } else {
+                    if (icon) {
+                        icon.classList.remove('bi-heart-fill');
+                        icon.classList.add('bi-heart');
+                    }
+                }
+                showToast(data.message || 'تم تحديث المفضلة', 'success');
+            } else {
+                // تراجع عن التغيير المحلي إذا فشل
+                LocalStore.toggleFavorite('product', productId, productData);
+                if (icon) {
+                    if (icon.classList.contains('bi-heart-fill')) {
+                        icon.classList.remove('bi-heart-fill');
+                        icon.classList.add('bi-heart');
+                    } else {
+                        icon.classList.remove('bi-heart');
+                        icon.classList.add('bi-heart-fill');
+                    }
+                }
+                showToast(data.message || 'حدث خطأ', 'error');
+            }
+        } catch (err) {
+            console.error('Favorite toggle error:', err);
+            // تراجع
+            LocalStore.toggleFavorite('product', productId, productData);
+            if (icon) {
+                if (icon.classList.contains('bi-heart-fill')) {
+                    icon.classList.remove('bi-heart-fill');
+                    icon.classList.add('bi-heart');
+                } else {
+                    icon.classList.remove('bi-heart');
+                    icon.classList.add('bi-heart-fill');
+                }
+            }
+            showToast('تعذر الاتصال بالخادم', 'error');
+        }
     }
 
     async function reactProduct(productId, reactionType, btnElement) {
@@ -563,9 +410,7 @@
         } else if (navigator.clipboard) {
             navigator.clipboard.writeText(url).then(() => showToast('تم نسخ الرابط', 'success'));
         } else {
-            showPrompt('انسخ الرابط:', url).then(value => {
-                if (value) showToast('تم نسخ الرابط', 'success');
-            });
+            prompt('انسخ الرابط:', url);
         }
     }
 
@@ -725,6 +570,10 @@
         try {
           const registration = await navigator.serviceWorker.register('/sw.js');
           console.log('Service Worker registered');
+          const existingSubscription = await registration.pushManager.getSubscription();
+          if (existingSubscription) {
+            console.log('Push subscription already exists');
+          }
         } catch (err) {
           console.error('Service Worker registration failed', err);
         }
@@ -742,57 +591,35 @@
       return outputArray;
     }
 
-    // تعديل دالة تفعيل الإشعارات الفورية
     window.enablePushNotifications = async function() {
       try {
-        if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-          showToast('متصفحك لا يدعم الإشعارات الفورية', 'error');
-          return;
-        }
-
-        // عرض نافذة مخصصة لشرح الإذن
-        const allowed = await showPermissionModal(
-          'نحتاج إذنك لإرسال إشعارات فورية عن الطلبات والمنتجات الجديدة والعروض.',
-          'السماح',
-          'إلغاء'
-        );
-        if (!allowed) {
-          showToast('تم إلغاء تفعيل الإشعارات', 'info');
-          return;
-        }
-
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-          showToast('لم يتم منح الإذن للإشعارات', 'error');
-          return;
-        }
-
         const registration = await navigator.serviceWorker.ready;
-        const vapidResponse = await fetch('/api/notifications/push/vapid_public_key');
-        const vapidData = await vapidResponse.json();
-        const vapidPublicKey = vapidData.public_key;
-        const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: convertedVapidKey
-        });
-        await fetch('/api/notifications/push/subscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': window.csrfToken
-          },
-          body: JSON.stringify({ subscription: subscription.toJSON() })
-        });
-        showToast('تم تفعيل الإشعارات بنجاح', 'success');
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const vapidResponse = await fetch('/api/notifications/push/vapid_public_key');
+          const vapidData = await vapidResponse.json();
+          const vapidPublicKey = vapidData.public_key;
+          const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+          });
+          await fetch('/api/notifications/push/subscribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': window.csrfToken
+            },
+            body: JSON.stringify({ subscription: subscription.toJSON() })
+          });
+          showToast('تم تفعيل الإشعارات بنجاح', 'success');
+        }
       } catch (err) {
         console.error('Push subscription failed', err);
-        showToast('فشل تفعيل الإشعارات الفورية', 'error');
       }
     };
   </script>
 
-  <!-- نافذة التأكيد -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -811,72 +638,21 @@
     </div>
   </div>
 
-  <!-- نافذة تنبيه -->
-  <div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="alertModalTitle">تنبيه</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-        </div>
-        <div class="modal-body">
-          <p id="alertModalMessage"></p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">حسناً</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- نافذة إدخال نص (prompt) -->
-  <div class="modal fade" id="promptModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="promptModalTitle">إدخال</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-        </div>
-        <div class="modal-body">
-          <p id="promptModalMessage"></p>
-          <input type="text" class="form-control" id="promptInput" dir="rtl">
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-          <button type="button" class="btn btn-primary" id="promptModalBtn">موافق</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- نافذة طلب الإذن -->
-  <div class="modal fade" id="permissionModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="permissionModalTitle">طلب إذن</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
-        </div>
-        <div class="modal-body">
-          <p id="permissionModalMessage"></p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" id="permissionCancelBtn">إلغاء</button>
-          <button type="button" class="btn btn-primary" id="permissionAllowBtn">السماح</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script>
-    // إصلاح خلفية المودال
-    document.querySelectorAll('.modal').forEach(modal => {
-      modal.addEventListener('hidden.bs.modal', () => {
-        if (document.querySelector('.modal-backdrop')) {
-          document.querySelector('.modal-backdrop').remove();
+    function showConfirmModal(message, formId) {
+      const modalEl = document.getElementById('confirmModal');
+      if (!modalEl) return;
+      document.getElementById('confirmModalMessage').textContent = message;
+      const btn = document.getElementById('confirmModalBtn');
+      btn.onclick = function() {
+        const form = document.getElementById(formId);
+        if (form) {
+          form.submit();
         }
-      });
-    });
+        bootstrap.Modal.getInstance(modalEl).hide();
+      };
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
   </script>
 
   {% block scripts %}{% endblock %}

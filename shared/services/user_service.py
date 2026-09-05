@@ -2,7 +2,7 @@ from database import db
 from models import User
 from shared.repositories.user_repository import UserRepository
 from werkzeug.security import generate_password_hash
-from shared.utils import is_strong_password, get_upload_path
+from shared.utils import is_strong_password, delete_cloudinary_file
 import secrets
 import os
 
@@ -37,9 +37,9 @@ class UserService:
                 return False, 'لا يمكن حذف آخر مدير نشط'
 
         try:
-            files_to_delete = []
+            # حذف الصور من Cloudinary
             if target.avatar:
-                files_to_delete.append(target.avatar)
+                delete_cloudinary_file(target.avatar)
 
             # جمع ملفات المنتجات من متاجر المستخدم
             stores = target.stores
@@ -49,20 +49,14 @@ class UserService:
                         for img in product.images.split(','):
                             img = img.strip()
                             if img:
-                                files_to_delete.append(img)
+                                delete_cloudinary_file(img)
                     if product.video:
-                        files_to_delete.append(product.video)
+                        delete_cloudinary_file(product.video)
+                if store.logo_url:
+                    delete_cloudinary_file(store.logo_url)
 
             UserRepository.delete(target)
             db.session.commit()
-
-            for filename in files_to_delete:
-                file_path = get_upload_path(filename)
-                if os.path.exists(file_path):
-                    try:
-                        os.remove(file_path)
-                    except Exception:
-                        pass
 
             return True, 'تم حذف المستخدم وجميع بياناته بنجاح'
         except Exception as e:
@@ -74,9 +68,10 @@ class UserService:
         target = UserRepository.get_by_id(user_id)
         if not target:
             return False, 'المستخدم غير موجود', None
+        # توليد كلمة مرور مؤقتة تلبي متطلبات is_strong_password
         while True:
-            temp_password = 'Aa1' + secrets.token_urlsafe(6)
-            strong, msg = is_strong_password(temp_password)
+            temp_password = 'Aa1!' + secrets.token_urlsafe(6)
+            strong, _ = is_strong_password(temp_password)
             if strong:
                 break
         target.password_hash = generate_password_hash(temp_password)

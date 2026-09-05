@@ -180,37 +180,40 @@
                     {% if store_videos %}
                         <div class="reels-grid">
                             {% for product in store_videos %}
-                            <div class="reel-slide" id="store-reel-{{ product.id }}">
-                                <div class="reel-video-wrapper">
-                                    <video class="reel-video" loop playsinline preload="auto"
-                                           src="{{ product.video | get_image_url }}"
-                                           poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
-                                           data-store-reel-video></video>
-                                    <div class="video-loading-spinner" data-video-spinner></div>
-                                    <div class="reel-play-overlay" data-play-overlay>
-                                        <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو"><i class="bi bi-play-fill"></i></button>
+                                {% if product.video %}
+                                <div class="reel-slide" id="store-reel-{{ product.id }}">
+                                    <div class="reel-video-wrapper">
+                                        <video class="reel-video" loop playsinline preload="auto"
+                                               src="{{ product.video | get_image_url }}"
+                                               poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
+                                               data-store-reel-video></video>
+                                        <div class="video-loading-spinner" data-video-spinner></div>
+                                        <div class="reel-play-overlay" data-play-overlay>
+                                            <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
+                                                <i class="bi bi-play-fill"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="reel-content">
+                                        <div class="reel-info-bottom">
+                                            <a href="{{ url_for('stores.store_public', store_id=store.id) }}" class="reel-store-link">
+                                                {% if store.logo_url %}
+                                                    <img src="{{ store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ store.name }}">
+                                                {% else %}
+                                                    <div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>
+                                                {% endif %}
+                                            </a>
+                                            <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
+                                                <h5 class="reel-product-name">{{ product.name }}</h5>
+                                                <div class="reel-product-price">{{ product.price|format_price }} ل.س</div>
+                                            </a>
+                                        </div>
+                                        <div class="reel-actions-column">
+                                            <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')" title="مشاركة"><i class="bi bi-share"></i></button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="reel-content">
-                                    <div class="reel-info-bottom">
-                                        <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="reel-store-link">
-                                            {% if product.store.logo_url %}
-                                                <img src="{{ product.store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ product.store.name }}">
-                                            {% else %}
-                                                <div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>
-                                            {% endif %}
-                                        </a>
-                                        <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
-                                            <h5 class="reel-product-name">{{ product.name }}</h5>
-                                            <div class="reel-product-price">{{ product.price|format_price }} ل.س {% if product.is_offer and product.original_price %}<span class="text-decoration-line-through text-muted ms-1">{{ product.original_price|format_price }}</span>{% endif %}</div>
-                                        </a>
-                                    </div>
-                                    <div class="reel-actions-column">
-                                        <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')" title="مشاركة"><i class="bi bi-share"></i></button>
-                                        <button class="reel-action-btn {% if product.stock_quantity == 0 %}disabled{% endif %}" onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة للسلة', 'success'))" title="أضف إلى السلة" {% if product.stock_quantity == 0 %}disabled{% endif %}><i class="bi bi-cart-plus"></i></button>
-                                    </div>
-                                </div>
-                            </div>
+                                {% endif %}
                             {% endfor %}
                         </div>
                     {% else %}
@@ -221,16 +224,30 @@
                 <div class="tab-pane fade" id="categories-tab" role="tabpanel">
                     {% if categories %}
                         {% for category in categories %}
-                            <h6 class="fw-bold mt-3"><i class="bi bi-tag"></i> {{ category.name }}</h6>
-                            {% set category_products = category.products %}
-                            {% if category_products %}
-                                <div class="products-grid">
-                                    {% for product in category_products[:4] %}
-                                        {{ macros.render_product_card(product, None, None, show_add_to_cart=True) }}
-                                    {% endfor %}
-                                </div>
-                            {% else %}
-                                <p class="text-muted small">لا توجد منتجات في هذا التصنيف.</p>
+                            {% if not category.parent %}
+                                <h6 class="fw-bold mt-3"><i class="bi bi-tag"></i> {{ category.name }}</h6>
+                                {% set category_products = category.products %}
+                                {% if category_products %}
+                                    <div class="row g-3">
+                                        {% for product in category_products[:4] %}
+                                            <div class="col-6 col-md-4 col-lg-3">
+                                                <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="text-decoration-none">
+                                                    <div class="card h-100 border-0 shadow-sm">
+                                                        <div class="product-image-wrapper" style="height:120px; overflow:hidden;">
+                                                            {{ macros.render_image(product.images.split(',')[0] if product.images else '', product.name, 'w-100 h-100', 'bi-image', 'w-100 h-100') }}
+                                                        </div>
+                                                        <div class="card-body p-2">
+                                                            <p class="small mb-1 text-truncate">{{ product.name }}</p>
+                                                            <p class="text-success fw-bold mb-0">{{ product.price|format_price }} ل.س</p>
+                                                        </div>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted small">لا توجد منتجات في هذا التصنيف.</p>
+                                {% endif %}
                             {% endif %}
                         {% endfor %}
                     {% else %}

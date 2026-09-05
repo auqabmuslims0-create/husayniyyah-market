@@ -209,7 +209,7 @@ def before_request_checks():
         'market.home', 'market.market', 'market.search', 'market.search_suggestions',
         'stores.stores_page', 'stores.store_public', 'stores.product_public',
         'offers.offers_page', 'reels.reels_page', 'services.services_page', 'services.contact',
-        'about', 'onboarding'
+        'onboarding'
     ]
     if g.user is None:
         if request.endpoint not in public_endpoints:

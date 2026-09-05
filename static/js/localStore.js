@@ -300,7 +300,27 @@ const LocalStore = (function() {
         sync();
     }
 
-    function removeFromCart(productId) { updateCart(productId, 0); }
+    function removeFromCart(productId) {
+        updateCart(productId, 0); // تحديث محلي وحذف من localStorage
+
+        // إرسال طلب حذف للخادم لتحديث الجلسة وقاعدة البيانات
+        if (navigator.onLine && typeof csrfToken !== 'undefined' && csrfToken) {
+            fetch(`/cart/update/${productId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: new URLSearchParams({ action: 'remove' })
+            }).then(res => res.json())
+              .then(data => {
+                  if (data.status === 'success') {
+                      updateCartBadges();
+                  }
+              })
+              .catch(err => console.warn('Remove from server failed:', err));
+        }
+    }
 
     function toggleFavorite(type, id, itemData) {
         const favs = getFavorites();

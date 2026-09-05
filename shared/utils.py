@@ -126,8 +126,12 @@ MAX_VIDEO_SIZE = 100 * 1024 * 1024
 def _secure_file(file, allowed_extensions, max_size):
     if not file or file.filename == '':
         return None
-    filename = secure_filename(file.filename)
-    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    # استخراج الامتداد من الاسم الأصلي قبل secure_filename
+    original_filename = file.filename
+    if '.' in original_filename:
+        ext = original_filename.rsplit('.', 1)[1].lower()
+    else:
+        ext = ''
     if ext not in allowed_extensions:
         return None
     mimetype = file.mimetype or ''
@@ -143,26 +147,35 @@ def _secure_file(file, allowed_extensions, max_size):
     return ext
 
 def delete_cloudinary_file(url):
+    """حذف ملف من Cloudinary باستخدام public_id المستخرج من الرابط."""
     if not url or not url.startswith('http'):
         return
     try:
+        # تحليل الرابط لاستخراج public_id
+        # مثال: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/file.jpg
         parts = url.split('/')
-        filename_with_ext = parts[-1]
-        public_id = filename_with_ext.rsplit('.', 1)[0]
-        folder = ''
-        if 'upload' in parts:
-            idx = parts.index('upload')
-            if idx + 2 < len(parts):
-                folder = '/'.join(parts[idx+2:-1])
-        full_public_id = f"{folder}/{public_id}" if folder else public_id
-        cloudinary.uploader.destroy(full_public_id)
+        # البحث عن 'upload' لتحديد بداية المسار
+        if 'upload' not in parts:
+            return
+        idx = parts.index('upload')
+        # الأجزاء بعد 'upload' قد تحتوي على version مثل v1234567890
+        path_parts = parts[idx+1:]
+        # إزالة أرقام الإصدار (v...)
+        filtered = [p for p in path_parts if not (p.startswith('v') and p[1:].isdigit())]
+        # إزالة اسم الملف والامتداد من النهاية
+        if filtered:
+            filename = filtered[-1]
+            public_id_with_ext = '/'.join(filtered[:-1] + [filename.rsplit('.', 1)[0]]) if '.' in filename else '/'.join(filtered)
+        else:
+            return
+        cloudinary.uploader.destroy(public_id_with_ext)
     except Exception as e:
         current_app.logger.error(f"Failed to delete old Cloudinary file: {e}")
 
 def save_image(file, old_url=None):
     ext = _secure_file(file, ALLOWED_IMAGE_EXTENSIONS, MAX_IMAGE_SIZE)
     if not ext:
-        return None
+        raise ValueError('صيغة الملف غير مدعومة أو الحجم كبير جداً')
     try:
         file.seek(0)
         upload_result = cloudinary.uploader.upload(
@@ -176,13 +189,14 @@ def save_image(file, old_url=None):
         if new_url and old_url:
             delete_cloudinary_file(old_url)
         return new_url
-    except Exception:
-        return None
+    except Exception as e:
+        current_app.logger.error(f'save_image failed: {str(e)}')
+        raise ValueError(f'فشل رفع الصورة إلى Cloudinary: {str(e)}')
 
 def save_video(file, old_url=None):
     ext = _secure_file(file, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_SIZE)
     if not ext:
-        return None
+        raise ValueError('صيغة الفيديو غير مدعومة أو الحجم كبير جداً')
     try:
         file.seek(0)
         upload_result = cloudinary.uploader.upload(
@@ -197,5 +211,5 @@ def save_video(file, old_url=None):
             delete_cloudinary_file(old_url)
         return new_url
     except Exception as e:
-        current_app.logger.error(f"Video upload failed: {e}")
-        return None
+        current_app.logger.error(f'save_video failed: {str(e)}')
+        raise ValueError(f'فشل رفع الفيديو إلى Cloudinary: {str(e)}')
